@@ -1,9 +1,13 @@
+#!/usr/bin/env python3
+# coding: utf-8
+
 import argparse
 import os
 import re
 import time
 from functools import lru_cache
 from multiprocessing.dummy import Pool
+from pathlib import Path
 from pprint import pformat, pprint
 from typing import List, Tuple
 from urllib.parse import unquote
@@ -250,27 +254,32 @@ def prepare(soft):
     soft.prepare()
 
 
-SOFTS = [NvidiaDriver('rtx', '',
-                      'https://www.nvidia.com/Download/processFind.aspx?psid=111&pfid=888&osid=57&lid=1&whql=&lang=en-us&ctk=0&dtcid=1'),
-         IntelDriver('uhd', '',
-                     'https://downloadcenter.intel.com/zh-cn/product/134906', driverKeyword='英特尔®显卡-Windows® 10 DCH 驱动程序'),
-         IntelDriver('wifi', '',
-                     'https://downloadcenter.intel.com/product/125192', driverKeyword='Windows® 10 Wi-Fi Drivers for Intel® Wireless Adapters', verLen=3),
-         ]
+def main():
+    SOFTS = [NvidiaDriver('rtx', '',
+                          'https://www.nvidia.com/Download/processFind.aspx?psid=111&pfid=888&osid=57&lid=1&whql=&lang=en-us&ctk=0&dtcid=1'),
+             IntelDriver('uhd', '',
+                         'https://downloadcenter.intel.com/zh-cn/product/134906', driverKeyword='英特尔®显卡-Windows® 10 DCH 驱动程序'),
+             IntelDriver('wifi', '',
+                         'https://downloadcenter.intel.com/product/125192', driverKeyword='Windows® 10 Wi-Fi Drivers for Intel® Wireless Adapters', verLen=3),
+             ]
 
-if args.action == 'check':
-    soft_list = selected(SOFTS, True)
-elif args.action == 'upgrade':
-    soft_list = SOFTS
+    if args.action == 'check':
+        soft_list = selected(SOFTS, True)
+    elif args.action == 'upgrade':
+        soft_list = SOFTS
 
-with Pool(args.jobs) as p:
-    p.map(prepare, soft_list)
+    with Pool(args.jobs) as p:
+        p.map(prepare, soft_list)
 
-for soft in soft_list:
-    soft.check()
-
-soft_list = [soft for soft in soft_list if not soft.isLatest]
-
-if args.download:
     for soft in soft_list:
-        soft.download()
+        soft.check()
+
+    soft_list = [soft for soft in soft_list if not soft.isLatest]
+
+    if args.download:
+        for soft in soft_list:
+            soft.download()
+
+
+if __name__ == "__main__":
+    main()
