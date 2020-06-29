@@ -7,16 +7,14 @@ import re
 import time
 from functools import lru_cache
 from multiprocessing.dummy import Pool
-from pathlib import Path
 from pprint import pformat, pprint
-from typing import List, Tuple
 from urllib.parse import unquote
 
 import click
 from lxml import etree
 
 from mpkg.common import Soft
-from mpkg.utils import Download, GetPage, Selected
+from mpkg.utils import Download, GetConfig, GetPage, Selected, SetConfig
 
 UA = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/601.4.4 (KHTML, like Gecko) Version/9.0.3 Safari/601.4.4'}
@@ -30,15 +28,24 @@ class Driver(Soft):
 
     def __init__(self, url: str, name='', rem=''):
         super().__init__(name, rem=rem)
-        self.name = name
-        self.rem = rem
         self.url = url
 
 
 class NvidiaDriver(Driver):
-    def __init__(self, url, name='', rem='', isStudio=False):
+    id = 'NvidiaDriver'
+
+    def __init__(self, url='', name='', rem=''):
+        url = url if url else GetConfig('url', path=NvidiaDriver.id)
         super().__init__(url, name=name, rem=rem)
-        self.isStudio = isStudio
+        self.isStudio = GetConfig('isStudio', path=NvidiaDriver.id)
+
+    @staticmethod
+    def config():
+        Soft.config(NvidiaDriver.id)
+        SetConfig('url', input(_('input your url(required): ')),
+                  path=NvidiaDriver.id)
+        SetConfig('isStudio', bool(
+            input(_('isStudio ? (press enter to pass, input 1 means yes): '))), path=NvidiaDriver.id)
 
     def _parse(self):
         r = GetPage(self.url, headers=UA)
@@ -92,6 +99,8 @@ class IntelWifi(Soft):
 
 
 class IntelDriver(Driver):
+    id = 'IntelDriver'
+
     def __init__(self, url, driverKeyword, name='', rem=''):
         super().__init__(url, name=name, rem=rem)
         self.kw = driverKeyword
@@ -112,7 +121,7 @@ def prepare(soft):
     soft.prepare()
 
 
-SOFTS = [NvidiaDriver('https://www.nvidia.com/Download/processFind.aspx?psid=111&pfid=888&osid=57&lid=1&whql=&lang=en-us&ctk=0&dtcid=1', name='rtx'),
+SOFTS = [NvidiaDriver(),
          IntelDriver('https://downloadcenter.intel.com/zh-cn/product/134906',
                      name='uhd', driverKeyword='英特尔®显卡-Windows® 10 DCH 驱动程序'),
          IntelDriver('https://downloadcenter.intel.com/product/125192', name='wifi',
@@ -149,6 +158,12 @@ def check(jobs, download, all, bydate):
     if download:
         for soft in soft_list:
             soft.download()'''
+
+
+@cli.command()
+# @click.argument('package')
+def config():
+    NvidiaDriver.config()
 
 
 if __name__ == "__main__":

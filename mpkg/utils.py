@@ -2,9 +2,18 @@
 # coding: utf-8
 
 import gettext
+import importlib
+import json
 import os
+from pathlib import Path
 
 import requests
+
+p = Path.home() / '.config/mpkg'
+fn = 'config.json'
+
+if not p.exists():
+    p.mkdir(parents=True)
 
 _ = gettext.gettext
 
@@ -23,7 +32,7 @@ def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
     cfg = []
     for i, x in enumerate(L):
         if isSoft:
-            print(f'{i} -> {x.id}')
+            print(f'{i} -> {x.name}')
         else:
             print(f'{i} -> {x}')
     option = input(f' {msg} ').replace(' ', '').split(',')
@@ -36,6 +45,37 @@ def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
         else:
             cfg.append(L[int(i)])
     return cfg
+
+
+def SetConfig(key: str, value=True, path='', filename=fn):
+    path_ = p / path
+    file = p / path / filename
+    if not path_.exists():
+        path_.mkdir(parents=True)
+    if not file.exists():
+        with file.open('w') as f:
+            f.write('{}')
+    with file.open('r') as f:
+        data = json.loads(f.read())
+    data[key] = value
+    with file.open('w') as f:
+        f.write(json.dumps(data))
+
+
+def GetConfig(key: str, path='', filename=fn):
+    file = p / path / filename
+    if not file.exists():
+        return
+    with file.open('r') as f:
+        data = json.loads(f.read())
+    return data.get(key)
+
+
+def Load(file):
+    spec = importlib.util.spec_from_file_location('Package', file)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.Package()
 
 
 def IsLatest(bydate=False):
