@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import gettext
+import json
 import os
 import re
 import time
@@ -72,27 +73,20 @@ class Soft(object):
         self.name = name
         self.rem = rem
 
-    def _getInfo(self) -> Tuple[List[int], List[int]]:
-        return defaultList, defaultList
-
     def _parse(self) -> Tuple[List[int], List[int], List[str], str]:
         return defaultList, defaultList, ['url'], defaultLog
 
-    def check(self):
-        if not self.isPrepared:
-            self.prepare()
+    def json(self):
+        pass
 
     def prepare(self) -> str:
         self.isPrepared = True
-        self.oldV, self.oldD = self._getInfo()
         self.ver, self.date, self.links, self.log = self._parse()
         info = []
         if self.ver == defaultList:
             info.append(f'{self.name}')
-        elif self.oldV == defaultList:
-            info.append(f'{self.name} {self.ver}')
         else:
-            info.append(f'{self.name} {self.oldV} -> {self.ver}')
+            info.append(f'{self.name} {self.ver}')
         # indent=1
         if self.date != defaultList:
             info.append(f' {self.date}')
@@ -105,22 +99,6 @@ class Soft(object):
         self.info = '\n'.join(info)
 
 
-def getDevconInfo(node: str) -> Tuple[List[int], List[int]]:
-    cmd = 'devcon drivernodes @'+node.replace('&', '^&')
-    with os.popen(cmd) as p:
-        L = p.read().split('#')
-    if len(L) < 2:
-        print(f'wrong node\ncommand: {cmd}\nresult:{L}')
-        return defaultList, defaultList
-    else:
-        L = L[1:]
-    t = [(list(map(int, re.search('    Driver date is (.*)', t).group(1).split('/'))),
-          list(map(int, re.search('    Driver version is (.*)', t).group(1).split('.')))) for t in L]
-    t.sort(key=lambda x: x[1], reverse=True)
-    ver, date = t[0][1], t[0][0]
-    return ver, date
-
-
 class Driver(Soft):
     needConfig = True
 
@@ -131,24 +109,11 @@ class Driver(Soft):
         self.rem = rem
         self.url = url
 
-    def _getInfo(self) -> Tuple[List[int], List[int]]:
-        return getDevconInfo(self.node)
-
 
 class NvidiaDriver(Driver):
     def __init__(self, name, drivernode, url, rem='', isStudio=False):
         super().__init__(name, drivernode, url, rem=rem)
         self.isStudio = isStudio
-
-    def _getInfo(self):
-        oldv, oldD = getDevconInfo(self.node)
-        with os.popen('nvidia-smi') as p:
-            oldV = list(map(int, p.read().split('Driver Version: ')
-                            [1].split(' ')[0].split('.')))
-        strV = ''.join(map(str, oldV))
-        if not ''.join(map(str, oldv))[-len(strV):] == strV:
-            print(f'warning: oldV conflict\ndevcon:{oldv}\nsmi:{oldV}')
-        return oldV, oldD
 
     def _parse(self):
         r = requests.get(self.url, headers=UA).text
@@ -191,10 +156,6 @@ class IntelWifi(Soft):
         super().__init__(name, rem=rem)
         self.node = node
 
-    def _getInfo(self):
-        oldv, oldD = getDevconInfo(self.node)
-        return oldv[:3], oldD
-
     def _parse(self):
         page = getPage(
             'https://www.intel.cn/content/www/cn/zh/support/articles/000017246/network-and-i-o/wireless-networking.html')
@@ -208,16 +169,9 @@ class IntelWifi(Soft):
 
 
 class IntelDriver(Driver):
-    def __init__(self, name, drivernode, url, driverKeyword, rem='', verLen=0):
+    def __init__(self, name, drivernode, url, driverKeyword, rem=''):
         super().__init__(name, drivernode, url, rem=rem)
-        self.verLen = verLen
         self.kw = driverKeyword
-
-    def _getInfo(self):
-        oldv, oldD = getDevconInfo(self.node)
-        if self.verLen == 0:
-            self.verLen = len(oldv)
-        return oldv[:self.verLen], oldD
 
     def _parse(self):
         L = getIntelList(self.url)
@@ -240,7 +194,7 @@ SOFTS = [NvidiaDriver('rtx', '',
          IntelDriver('uhd', '',
                      'https://downloadcenter.intel.com/zh-cn/product/134906', driverKeyword='英特尔®显卡-Windows® 10 DCH 驱动程序'),
          IntelDriver('wifi', '',
-                     'https://downloadcenter.intel.com/product/125192', driverKeyword='Windows® 10 Wi-Fi Drivers for Intel® Wireless Adapters', verLen=3),
+                     'https://downloadcenter.intel.com/product/125192', driverKeyword='Windows® 10 Wi-Fi Drivers for Intel® Wireless Adapters'),
          ]
 
 
@@ -266,7 +220,6 @@ def check(jobs, download, all, bydate):
         p.map(prepare, soft_list)
 
     for soft in soft_list:
-        soft.check()
         print(soft.info)
 
     '''soft_list = [soft for soft in soft_list if not soft.isLatest]
