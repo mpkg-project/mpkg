@@ -16,7 +16,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "mpkg=mpkg.mpkg:main",
+            "mpkg=mpkg.cli:cli",
         ]
     },
     classifiers=[

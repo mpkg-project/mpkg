@@ -3,7 +3,6 @@
 
 import gettext
 import json
-import os
 import re
 import time
 from functools import lru_cache
@@ -14,101 +13,16 @@ from typing import List, Tuple
 from urllib.parse import unquote
 
 import click
-import requests
 from lxml import etree
 
-downloader = r'wget -P "d:\Downloads"'
+from mpkg.common import Soft
+from mpkg.utils import Download, GetPage, Selected
 
 UA = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/601.4.4 (KHTML, like Gecko) Version/9.0.3 Safari/601.4.4'}
-defaultList = [-1, -1, -1]
-defaultLog = ''
+
 
 _ = gettext.gettext
-
-
-def GetPage(url: str, **kwargs) -> str:
-    return requests.get(url, **kwargs).text
-
-
-def Download(url: str):
-    # -v print(_('使用缺省下载方案'))
-    os.system(f'{downloader} "{url}"')
-
-
-def selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
-    cfg = []
-    for i, x in enumerate(L):
-        if isSoft:
-            print(f'{i} -> {x.id}')
-        else:
-            print(f'{i} -> {x}')
-    option = input(f' {msg} ').replace(' ', '').split(',')
-    print()
-    for i in option:
-        if '-' in i:
-            a, b = i.split('-')
-            for j in range(int(a), int(b)+1):
-                cfg.append(L[j])
-        else:
-            cfg.append(L[int(i)])
-    return cfg
-
-
-def IsLatest(bydate=False):
-    pass
-
-
-def download(links: list):
-    # -v print(_('使用缺省下载方案'))
-    if len(links) != 1:
-        link = selected(links, msg=_('select a url:'))[0]
-    else:
-        link = links[0]
-    os.system(f'{downloader} "{link}"')
-
-
-class Soft(object):
-    id = ''
-    allowExtract = False
-    isPrepared = False
-    needConfig = False
-
-    def __init__(self, name='', rem=''):
-        if name:
-            self.id = name
-        self.rem = rem
-
-    def _parse(self) -> Tuple[List[int], List[int], List[str], str]:
-        return defaultList, defaultList, ['url'], defaultLog
-
-    def json(self) -> bytes:
-        if not self.isPrepared:
-            self.prepare()
-        return json.dumps(self.data).encode('utf-8')
-
-    def download(self):
-        # -v print(_('使用缺省下载方案'))
-        if len(self.links) != 1:
-            link = selected(self.links, msg=_('select a url:'))[0]
-        else:
-            link = self.links[0]
-        Download(link)
-
-    def prepare(self):
-        self.isPrepared = True
-        self.ver, self.date, self.links, self.log = self._parse()
-        data = {}
-        data['id'] = self.id
-        data['ver'] = self.ver
-        data['links'] = self.links
-        if self.date != defaultList:
-            data['date'] = self.date
-        if self.rem:
-            data['rem'] = self.rem
-        if self.log:
-            data['changelog'] = self.log
-        self.data = data
 
 
 class Driver(Soft):
@@ -150,7 +64,7 @@ def getIntelList(URL) -> list:
     u = URL.split('/product/')
     u = u[0] + '/json/pageresults?pageNumber=2&productId=' + u[1]
     # u = u[0] + '/json/pageresults?productId=' + u[1]
-    r = requests.get(u).json()
+    r = json.loads(GetPage(u))
     return [[x['Title'], x['DownloadType'], x['OperatingSystemSet'], x['Version'], x['PublishDateMMDDYYYY'], x['FullDescriptionUrl']] for x in r['ResultsForDisplay']]
 
 
@@ -174,7 +88,7 @@ class IntelWifi(Soft):
             links = sorted(getIntelDrivers(a[0].values()[0]), reverse=True)[:3]
         else:
             print('IntelWifi(Soft) parsing error')
-        return defaultList, defaultList, links, defaultLog
+        return self.DefaultList, self.DefaultList, links, self.DefaultLog
 
 
 class IntelDriver(Driver):
@@ -191,7 +105,7 @@ class IntelDriver(Driver):
         ver = item[3]
         url = 'https://downloadcenter.intel.com'+item[-1]
         drivers = getIntelDrivers(url)
-        return list(map(int, ver.split('.'))), list(map(int, date)), drivers, defaultLog
+        return list(map(int, ver.split('.'))), list(map(int, date)), drivers, self.DefaultLog
 
 
 def prepare(soft):
@@ -222,7 +136,7 @@ def check(jobs, download, all, bydate):
     if all:
         soft_list = SOFTS
     else:
-        soft_list = selected(SOFTS, isSoft=True)
+        soft_list = Selected(SOFTS, isSoft=True)
 
     with Pool(jobs) as p:
         p.map(prepare, soft_list)
