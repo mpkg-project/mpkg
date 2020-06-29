@@ -27,15 +27,20 @@ defaultLog = ''
 _ = gettext.gettext
 
 
-def getPage(url: str, **kwargs) -> str:
+def GetPage(url: str, **kwargs) -> str:
     return requests.get(url, **kwargs).text
+
+
+def Download(url: str):
+    # -v print(_('使用缺省下载方案'))
+    os.system(f'{downloader} "{url}"')
 
 
 def selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
     cfg = []
     for i, x in enumerate(L):
         if isSoft:
-            print(f'{i} -> {x.name}')
+            print(f'{i} -> {x.id}')
         else:
             print(f'{i} -> {x}')
     option = input(f' {msg} ').replace(' ', '').split(',')
@@ -64,59 +69,65 @@ def download(links: list):
 
 
 class Soft(object):
+    id = ''
     allowExtract = False
     isPrepared = False
     needConfig = False
-    info = ''
 
-    def __init__(self, name: str, rem=''):
-        self.name = name
+    def __init__(self, name='', rem=''):
+        if name:
+            self.id = name
         self.rem = rem
 
     def _parse(self) -> Tuple[List[int], List[int], List[str], str]:
         return defaultList, defaultList, ['url'], defaultLog
 
-    def json(self):
-        pass
+    def json(self) -> bytes:
+        if not self.isPrepared:
+            self.prepare()
+        return json.dumps(self.data).encode('utf-8')
 
-    def prepare(self) -> str:
+    def download(self):
+        # -v print(_('使用缺省下载方案'))
+        if len(self.links) != 1:
+            link = selected(self.links, msg=_('select a url:'))[0]
+        else:
+            link = self.links[0]
+        Download(link)
+
+    def prepare(self):
         self.isPrepared = True
         self.ver, self.date, self.links, self.log = self._parse()
-        info = []
-        if self.ver == defaultList:
-            info.append(f'{self.name}')
-        else:
-            info.append(f'{self.name} {self.ver}')
-        # indent=1
+        data = {}
+        data['id'] = self.id
+        data['ver'] = self.ver
+        data['links'] = self.links
         if self.date != defaultList:
-            info.append(f' {self.date}')
-        info.append(' '+'\n '.join(pformat(self.links).splitlines()))
+            data['date'] = self.date
         if self.rem:
-            info.append(_(' rem: ') + self.rem)
+            data['rem'] = self.rem
         if self.log:
-            info.append(_(' changelog: ') + self.log)
-        info.append('')
-        self.info = '\n'.join(info)
+            data['changelog'] = self.log
+        self.data = data
 
 
 class Driver(Soft):
     needConfig = True
 
-    def __init__(self, name: str, drivernode: str, url: str, rem=''):
+    def __init__(self, url: str, name='', rem=''):
         super().__init__(name, rem=rem)
         self.name = name
-        self.node = drivernode
         self.rem = rem
         self.url = url
 
 
 class NvidiaDriver(Driver):
-    def __init__(self, name, drivernode, url, rem='', isStudio=False):
-        super().__init__(name, drivernode, url, rem=rem)
+    def __init__(self, url, name='', rem='', isStudio=False):
+        super().__init__(url, name=name, rem=rem)
         self.isStudio = isStudio
 
     def _parse(self):
-        r = requests.get(self.url, headers=UA).text
+        r = GetPage(self.url, headers=UA)
         L = etree.HTML(r).xpath('//*[@id="driverList"]')
         if self.isStudio:
             L = [x for x in L if x.xpath(
@@ -144,7 +155,7 @@ def getIntelList(URL) -> list:
 
 
 def getIntelDrivers(u) -> list:
-    r = requests.get(u).text
+    r = GetPage(u)
     u = [x.xpath('.//a')[0].values()[1]
          for x in etree.HTML(r).xpath('//*[@class="download-file"]')]
     drivers = [unquote(x).split('httpDown=')[::-1][0] for x in u]
@@ -152,12 +163,10 @@ def getIntelDrivers(u) -> list:
 
 
 class IntelWifi(Soft):
-    def __init__(self, name, node, rem=''):
-        super().__init__(name, rem=rem)
-        self.node = node
+    id = 'IntelWifi'
 
     def _parse(self):
-        page = getPage(
+        page = GetPage(
             'https://www.intel.cn/content/www/cn/zh/support/articles/000017246/network-and-i-o/wireless-networking.html')
         a = [x for x in etree.HTML(page).xpath(
             '//a') if b'&#229;&#156;&#168;&#230;&#173;&#164;&#229;&#164;&#132;&#228;&#184;&#139;&#232;&#189;&#189;' in etree.tostring(x)]
@@ -169,8 +178,8 @@ class IntelWifi(Soft):
 
 
 class IntelDriver(Driver):
-    def __init__(self, name, drivernode, url, driverKeyword, rem=''):
-        super().__init__(name, drivernode, url, rem=rem)
+    def __init__(self, url, driverKeyword, name='', rem=''):
+        super().__init__(url, name=name, rem=rem)
         self.kw = driverKeyword
 
     def _parse(self):
@@ -189,12 +198,11 @@ def prepare(soft):
     soft.prepare()
 
 
-SOFTS = [NvidiaDriver('rtx', '',
-                      'https://www.nvidia.com/Download/processFind.aspx?psid=111&pfid=888&osid=57&lid=1&whql=&lang=en-us&ctk=0&dtcid=1'),
-         IntelDriver('uhd', '',
-                     'https://downloadcenter.intel.com/zh-cn/product/134906', driverKeyword='英特尔®显卡-Windows® 10 DCH 驱动程序'),
-         IntelDriver('wifi', '',
-                     'https://downloadcenter.intel.com/product/125192', driverKeyword='Windows® 10 Wi-Fi Drivers for Intel® Wireless Adapters'),
+SOFTS = [NvidiaDriver('https://www.nvidia.com/Download/processFind.aspx?psid=111&pfid=888&osid=57&lid=1&whql=&lang=en-us&ctk=0&dtcid=1', name='rtx'),
+         IntelDriver('https://downloadcenter.intel.com/zh-cn/product/134906',
+                     name='uhd', driverKeyword='英特尔®显卡-Windows® 10 DCH 驱动程序'),
+         IntelDriver('https://downloadcenter.intel.com/product/125192', name='wifi',
+                     driverKeyword='Windows® 10 Wi-Fi Drivers for Intel® Wireless Adapters')
          ]
 
 
@@ -220,7 +228,7 @@ def check(jobs, download, all, bydate):
         p.map(prepare, soft_list)
 
     for soft in soft_list:
-        print(soft.info)
+        pprint(soft.data)
 
     '''soft_list = [soft for soft in soft_list if not soft.isLatest]
 
