@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-import argparse
+import gettext
 import os
 import re
 import time
@@ -12,6 +12,7 @@ from pprint import pformat, pprint
 from typing import List, Tuple
 from urllib.parse import unquote
 
+import click
 import requests
 from lxml import etree
 
@@ -22,23 +23,14 @@ UA = {
 defaultList = [-1, -1, -1]
 defaultLog = ''
 
-parser = argparse.ArgumentParser(description='get latest software')
-parser.add_argument('action', help='check|upgrade')
-parser.add_argument('--bydate', default=False,
-                    action='store_true', help='check version by date')
-parser.add_argument('-s', '--skip', default=False,
-                    action='store_true', help='skip latest software')
-parser.add_argument('-j', '--jobs', default=10, type=int, help='threads')
-parser.add_argument('-d', '--download', default=False, action='store_true')
-#parser.add_argument('-i', '--install', default=False, action='store_true')
-args = parser.parse_args()
+_ = gettext.gettext
 
 
 def getPage(url: str, **kwargs) -> str:
     return requests.get(url, **kwargs).text
 
 
-def selected(L: list, isSoft=False, msg='select (eg: 0,2-5):') -> list:
+def selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
     cfg = []
     for i, x in enumerate(L):
         if isSoft:
@@ -57,17 +49,28 @@ def selected(L: list, isSoft=False, msg='select (eg: 0,2-5):') -> list:
     return cfg
 
 
+def IsLatest(bydate=False):
+    pass
+
+
+def download(links: list):
+    # -v print(_('使用缺省下载方案'))
+    if len(links) != 1:
+        link = selected(links, msg=_('select a url:'))[0]
+    else:
+        link = links[0]
+    os.system(f'{downloader} "{link}"')
+
+
 class Soft(object):
-    isStatic = True
     allowExtract = False
     isPrepared = False
-    isLatest = False
+    needConfig = False
     info = ''
 
     def __init__(self, name: str, rem=''):
         self.name = name
         self.rem = rem
-        self.bydate = args.bydate
 
     def _getInfo(self) -> Tuple[List[int], List[int]]:
         return defaultList, defaultList
@@ -78,48 +81,26 @@ class Soft(object):
     def check(self):
         if not self.isPrepared:
             self.prepare()
-        print(self.info)
-
-    def download(self):
-        # -v print('使用缺省下载方案')
-        if not self.isLatest:
-            if len(self.links) != 1:
-                link = selected(self.links, msg='select a url:')[0]
-            else:
-                link = self.links[0]
-            os.system(f'{downloader} "{link}"')
 
     def prepare(self) -> str:
         self.isPrepared = True
         self.oldV, self.oldD = self._getInfo()
         self.ver, self.date, self.links, self.log = self._parse()
-        if self.bydate:
-            if self.date == self.oldD and self.date != defaultList:
-                self.isLatest = True
-        else:
-            if self.ver == self.oldV and self.ver != defaultList:
-                self.isLatest = True
         info = []
-        if self.isLatest:
-            if args.skip:
-                return
-            info.append(f'{self.name}, {self.ver}')
-            info.append(' -> Already up to date.')
+        if self.ver == defaultList:
+            info.append(f'{self.name}')
+        elif self.oldV == defaultList:
+            info.append(f'{self.name} {self.ver}')
         else:
-            if self.ver == defaultList:
-                info.append(f'{self.name}')
-            elif self.oldV == defaultList:
-                info.append(f'{self.name} {self.ver}')
-            else:
-                info.append(f'{self.name} {self.oldV} -> {self.ver}')
-            # indent=1
-            if self.date != defaultList:
-                info.append(f' {self.date}')
-            info.append(' '+'\n '.join(pformat(self.links).splitlines()))
-            if self.rem:
-                info.append(f' rem: {self.rem}')
-            if self.log:
-                info.append(f' changelog: {self.log}')
+            info.append(f'{self.name} {self.oldV} -> {self.ver}')
+        # indent=1
+        if self.date != defaultList:
+            info.append(f' {self.date}')
+        info.append(' '+'\n '.join(pformat(self.links).splitlines()))
+        if self.rem:
+            info.append(_(' rem: ') + self.rem)
+        if self.log:
+            info.append(_(' changelog: ') + self.log)
         info.append('')
         self.info = '\n'.join(info)
 
@@ -141,7 +122,7 @@ def getDevconInfo(node: str) -> Tuple[List[int], List[int]]:
 
 
 class Driver(Soft):
-    isStatic = False
+    needConfig = True
 
     def __init__(self, name: str, drivernode: str, url: str, rem=''):
         super().__init__(name, rem=rem)
@@ -254,32 +235,46 @@ def prepare(soft):
     soft.prepare()
 
 
-def main():
-    SOFTS = [NvidiaDriver('rtx', '',
-                          'https://www.nvidia.com/Download/processFind.aspx?psid=111&pfid=888&osid=57&lid=1&whql=&lang=en-us&ctk=0&dtcid=1'),
-             IntelDriver('uhd', '',
-                         'https://downloadcenter.intel.com/zh-cn/product/134906', driverKeyword='英特尔®显卡-Windows® 10 DCH 驱动程序'),
-             IntelDriver('wifi', '',
-                         'https://downloadcenter.intel.com/product/125192', driverKeyword='Windows® 10 Wi-Fi Drivers for Intel® Wireless Adapters', verLen=3),
-             ]
+SOFTS = [NvidiaDriver('rtx', '',
+                      'https://www.nvidia.com/Download/processFind.aspx?psid=111&pfid=888&osid=57&lid=1&whql=&lang=en-us&ctk=0&dtcid=1'),
+         IntelDriver('uhd', '',
+                     'https://downloadcenter.intel.com/zh-cn/product/134906', driverKeyword='英特尔®显卡-Windows® 10 DCH 驱动程序'),
+         IntelDriver('wifi', '',
+                     'https://downloadcenter.intel.com/product/125192', driverKeyword='Windows® 10 Wi-Fi Drivers for Intel® Wireless Adapters', verLen=3),
+         ]
 
-    if args.action == 'check':
-        soft_list = selected(SOFTS, True)
-    elif args.action == 'upgrade':
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+@click.option('-j', '--jobs', default=10, help=_('threads'))
+@click.option('-d', '--download', is_flag=True)
+@click.option('--all', is_flag=True, help=_('check all packages'))
+@click.option('--bydate', is_flag=True, help=_('check version by date'))
+# @click.option('-v', default=False, help=_('show all packages'))
+# @click.option('-i', '--install', default=False, help=_('install packages'))
+def check(jobs, download, all, bydate):
+    if all:
         soft_list = SOFTS
+    else:
+        soft_list = selected(SOFTS, isSoft=True)
 
-    with Pool(args.jobs) as p:
+    with Pool(jobs) as p:
         p.map(prepare, soft_list)
 
     for soft in soft_list:
         soft.check()
+        print(soft.info)
 
-    soft_list = [soft for soft in soft_list if not soft.isLatest]
+    '''soft_list = [soft for soft in soft_list if not soft.isLatest]
 
-    if args.download:
+    if download:
         for soft in soft_list:
-            soft.download()
+            soft.download()'''
 
 
 if __name__ == "__main__":
-    main()
+    cli()

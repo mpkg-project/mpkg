@@ -12,6 +12,7 @@ setup(
     install_requires=[
         "lxml>=4.5.0",
         "requests>=2.23.0",
+        "click>=7.1.1",
     ],
     entry_points={
         "console_scripts": [
