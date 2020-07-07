@@ -70,7 +70,7 @@ def LoadFile(path):
 
 
 def Load(source: str, installed=True, sync=True):
-    # zip/json/py
+    # json/py
     if not installed:
         sync = True
     if source.endswith('.py'):
@@ -87,9 +87,22 @@ def Load(source: str, installed=True, sync=True):
                     Download(source, directory=HOME / 'py', filename=name)
                     SetConfig(name, ver, filename=name +
                               '.ver.json', abspath=abspath)
-            pkg = LoadFile(file)
         else:
-            pkg = LoadFile(source)
+            file = source
+        pkg = LoadFile(file)
+        if pkg.isMultiple:
+            if not installed:
+                i = int(
+                    input(_('\ninput the number of profiles for {pkgname}: ').format(pkgname=pkg.id)))
+                pkg.setconfig('i', i)
+            pkgs = []
+            for i in range(pkg.getconfig('i')):
+                newpkg = LoadFile(file)
+                newpkg.cfg += f'.{i}'
+                newpkg.__init__()
+                pkgs.append(newpkg)
+        else:
+            pkgs = [pkg]
         if pkg.needConfig and not installed:
-            pkg.config()
-        return pkg
+            [pkg.config() for pkg in pkgs]
+        return pkgs

@@ -31,7 +31,9 @@ def cli():
 # @click.option('-v', default=False, help=_('show all packages'))
 # @click.option('-i', '--install', default=False, help=_('install packages'))
 def check(jobs, download, all, bydate, sync):
-    SOFTS = [Load(item, sync=sync) for item in GetConfig('sources')]
+    SOFTS = []
+    for item in GetConfig('sources'):
+        SOFTS += Load(item, sync=sync)
     if all:
         soft_list = SOFTS
     else:
@@ -52,7 +54,8 @@ def check(jobs, download, all, bydate, sync):
 
 @cli.command()
 @click.option('-f', '--force', is_flag=True)
-def config(force):
+@click.option('--load/--no-load', default=True)
+def config(force, load):
     if not force and GetConfig('sources'):
         print(_('pass'))
     else:
@@ -62,7 +65,8 @@ def config(force):
             s = input(_('\n input sources(press enter to pass): '))
             if s:
                 sources.append(s)
-                Load(s, installed=False)
+                if load:
+                    Load(s, installed=False)
             else:
                 break
         SetConfig('sources', sources)
