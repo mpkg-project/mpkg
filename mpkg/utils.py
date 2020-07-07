@@ -2,7 +2,6 @@
 # coding: utf-8
 
 import gettext
-import importlib
 import os
 from pathlib import Path
 
@@ -60,49 +59,3 @@ def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
 
 def IsLatest(bydate=False):
     pass
-
-
-def LoadFile(path):
-    spec = importlib.util.spec_from_file_location('Package', path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.Package()
-
-
-def Load(source: str, installed=True, sync=True):
-    # json/py
-    if not installed:
-        sync = True
-    if source.endswith('.py'):
-        if source.startswith('http'):
-            name = source.split('/')[-1]
-            abspath = HOME / 'py'
-            file = HOME / 'py' / name
-            if sync:
-                ver = int(GetPage(source + '.ver').replace(' ', ''))
-                ver_ = GetConfig(name, filename=name +
-                                 '.ver.json', abspath=abspath)
-                ver_ = -1 if not ver_ else int(ver_)
-                if ver > ver_:
-                    Download(source, directory=HOME / 'py', filename=name)
-                    SetConfig(name, ver, filename=name +
-                              '.ver.json', abspath=abspath)
-        else:
-            file = source
-        pkg = LoadFile(file)
-        if pkg.isMultiple:
-            if not installed:
-                i = int(
-                    input(_('\ninput the number of profiles for {pkgname}: ').format(pkgname=pkg.id)))
-                pkg.setconfig('i', i)
-            pkgs = []
-            for i in range(pkg.getconfig('i')):
-                newpkg = LoadFile(file)
-                newpkg.cfg += f'.{i}'
-                newpkg.__init__()
-                pkgs.append(newpkg)
-        else:
-            pkgs = [pkg]
-        if pkg.needConfig and not installed:
-            [pkg.config() for pkg in pkgs]
-        return pkgs

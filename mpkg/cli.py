@@ -8,7 +8,8 @@ from pprint import pformat, pprint
 import click
 
 from .config import GetConfig, SetConfig
-from .utils import Load, Selected
+from .load import Load
+from .utils import Selected
 
 _ = gettext.gettext
 
