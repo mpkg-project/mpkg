@@ -3,29 +3,32 @@
 
 import gettext
 import importlib
-import json
 import os
 from pathlib import Path
 
 import requests
 
-p = Path.home() / '.config/mpkg'
-fn = 'config.json'
-
-if not p.exists():
-    p.mkdir(parents=True)
+from .config import HOME, GetConfig
 
 _ = gettext.gettext
 
-downloader = r'wget -P "d:\Downloads"'
+downloader = GetConfig('downloader')
 
 
 def GetPage(url: str, **kwargs) -> str:
     return requests.get(url, **kwargs).text
 
 
-def Download(url: str):
-    os.system(f'{downloader} "{url}"')
+def Download(url: str, directory=HOME, filename=False):
+    directory = Path(directory)
+    if not filename:
+        filename = url.split('/')[-1]
+    os.system(downloader.format(
+        url=url, directory=directory, filename=filename))
+    file = directory / filename
+    if not file.is_file():
+        print(f'warning: no {file}')
+    return str(file)
 
 
 def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
@@ -47,36 +50,28 @@ def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
     return cfg
 
 
-def SetConfig(key: str, value=True, path='', filename=fn):
-    path_ = p / path
-    file = p / path / filename
-    if not path_.exists():
-        path_.mkdir(parents=True)
-    if not file.exists():
-        with file.open('w') as f:
-            f.write('{}')
-    with file.open('r') as f:
-        data = json.loads(f.read())
-    data[key] = value
-    with file.open('w') as f:
-        f.write(json.dumps(data))
+def IsLatest(bydate=False):
+    pass
 
 
-def GetConfig(key: str, path='', filename=fn):
-    file = p / path / filename
-    if not file.exists():
-        return
-    with file.open('r') as f:
-        data = json.loads(f.read())
-    return data.get(key)
+def Sync(url):
+    pass
 
 
-def Load(file):
-    spec = importlib.util.spec_from_file_location('Package', file)
+def LoadFile(path):
+    spec = importlib.util.spec_from_file_location('Package', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.Package()
 
 
-def IsLatest(bydate=False):
-    pass
+def Load(source: str, installed=True):
+    # zip/json/py
+    if source.endswith('.py'):
+        if source.startswith('http'):
+            pass
+        else:
+            pkg = LoadFile(source)
+            if pkg.needConfig and not installed:
+                pkg.config()
+            return pkg

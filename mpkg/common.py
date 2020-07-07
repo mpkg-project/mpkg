@@ -5,7 +5,8 @@ import gettext
 import json
 from typing import List, Tuple
 
-from mpkg.utils import Download, GetConfig, Selected, SetConfig
+from .config import GetConfig, SetConfig
+from .utils import Download, Selected
 
 DefaultList = [-1, -1, -1]
 DefaultLog = ''
@@ -22,8 +23,8 @@ class Soft(object):
     DefaultLog = ''
 
     def __init__(self, name='', rem=''):
-        name_ = GetConfig('name', path=self.id)
-        rem_ = GetConfig('rem', path=self.id)
+        name_ = self.getconfig('name')
+        rem_ = self.getconfig('rem')
         if name:
             self.name = name
         elif name_:
@@ -35,14 +36,21 @@ class Soft(object):
         else:
             self.rem = rem_
 
-    @staticmethod
-    def config(id):
-        print(_('\n configuring {0} (press enter to skip)').format(id))
-        SetConfig('name', input(_('input name: ')), path=id)
-        SetConfig('rem', input(_('input rem: ')), path=id)
-
     def _parse(self) -> Tuple[List[int], List[int], List[str], str]:
         return self.DefaultList, self.DefaultList, ['url'], self.DefaultLog
+
+    def config(self):
+        print(_('\n configuring {0} (press enter to pass)').format(self.id))
+        self.setconfig('name')
+        self.setconfig('rem')
+
+    def setconfig(self, key, value=False):
+        if value == False:
+            value = input(_('input {key}: '.format(key=key)))
+        SetConfig(key, value, path=self.id)
+
+    def getconfig(self, key):
+        return GetConfig(key, path=self.id)
 
     def json(self) -> bytes:
         if not self.isPrepared:
@@ -71,3 +79,11 @@ class Soft(object):
         if self.log:
             data['changelog'] = self.log
         self.data = data
+
+
+class Driver(Soft):
+    needConfig = True
+
+    def __init__(self, url: str, name='', rem=''):
+        super().__init__(name, rem=rem)
+        self.url = url
