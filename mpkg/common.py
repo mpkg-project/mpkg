@@ -8,9 +8,6 @@ from typing import List, Tuple
 from .config import GetConfig, SetConfig
 from .utils import Download, Selected
 
-DefaultList = [-1, -1, -1]
-DefaultLog = ''
-
 _ = gettext.gettext
 
 

@@ -27,10 +27,11 @@ def cli():
 @click.option('-d', '--download', is_flag=True)
 @click.option('--all', is_flag=True, help=_('check all packages'))
 @click.option('--bydate', is_flag=True, help=_('check version by date'))
+@click.option('--sync/--no-sync', default=True)
 # @click.option('-v', default=False, help=_('show all packages'))
 # @click.option('-i', '--install', default=False, help=_('install packages'))
-def check(jobs, download, all, bydate):
-    SOFTS = [Load(item) for item in GetConfig('sources')]
+def check(jobs, download, all, bydate, sync):
+    SOFTS = [Load(item, sync=sync) for item in GetConfig('sources')]
     if all:
         soft_list = SOFTS
     else:
@@ -50,11 +51,12 @@ def check(jobs, download, all, bydate):
 
 
 @cli.command()
-# @click.argument('package')
-def config():
-    if(GetConfig('sources')):
+@click.option('-f', '--force', is_flag=True)
+def config(force):
+    if not force and GetConfig('sources'):
         print(_('pass'))
     else:
+        SetConfig('downloader', 'wget -O "{file}" "{url}"')
         sources = []
         while True:
             s = input(_('\n input sources(press enter to pass): '))
@@ -64,8 +66,6 @@ def config():
             else:
                 break
         SetConfig('sources', sources)
-        SetConfig('downloader',
-                  'wget -P "{directory}" -O "{filename}" "{url}"')
 
 
 @cli.command()

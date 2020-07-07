@@ -8,7 +8,7 @@ from pathlib import Path
 
 import requests
 
-from .config import HOME, GetConfig
+from .config import HOME, GetConfig, SetConfig
 
 _ = gettext.gettext
 
@@ -21,13 +21,21 @@ def GetPage(url: str, **kwargs) -> str:
 
 def Download(url: str, directory=HOME, filename=False):
     directory = Path(directory)
+    file = directory / filename
+    if not directory.exists():
+        directory.mkdir(parents=True)
     if not filename:
         filename = url.split('/')[-1]
-    os.system(downloader.format(
-        url=url, directory=directory, filename=filename))
+    if '{file}' in downloader:
+        command = downloader.format(url=url, file=file)
+    else:
+        command = downloader.format(
+            url=url, directory=directory, filename=filename)
+    os.system(command)
     file = directory / filename
     if not file.is_file():
         print(f'warning: no {file}')
+        print(f'command: {command}')
     return str(file)
 
 
@@ -54,10 +62,6 @@ def IsLatest(bydate=False):
     pass
 
 
-def Sync(url):
-    pass
-
-
 def LoadFile(path):
     spec = importlib.util.spec_from_file_location('Package', path)
     module = importlib.util.module_from_spec(spec)
@@ -65,13 +69,27 @@ def LoadFile(path):
     return module.Package()
 
 
-def Load(source: str, installed=True):
+def Load(source: str, installed=True, sync=True):
     # zip/json/py
+    if not installed:
+        sync = True
     if source.endswith('.py'):
         if source.startswith('http'):
-            pass
+            name = source.split('/')[-1]
+            abspath = HOME / 'py'
+            file = HOME / 'py' / name
+            if sync:
+                ver = int(GetPage(source + '.ver').replace(' ', ''))
+                ver_ = GetConfig(name, filename=name +
+                                 '.ver.json', abspath=abspath)
+                ver_ = -1 if not ver_ else int(ver_)
+                if ver > ver_:
+                    Download(source, directory=HOME / 'py', filename=name)
+                    SetConfig(name, ver, filename=name +
+                              '.ver.json', abspath=abspath)
+            pkg = LoadFile(file)
         else:
             pkg = LoadFile(source)
-            if pkg.needConfig and not installed:
-                pkg.config()
-            return pkg
+        if pkg.needConfig and not installed:
+            pkg.config()
+        return pkg
