@@ -22,19 +22,13 @@ class Soft(object):
     DefaultList = [-1, -1, -1]
     DefaultLog = ''
 
-    def __init__(self, name='', rem=''):
-        name_ = self.getconfig('name')
-        rem_ = self.getconfig('rem')
+    def __init__(self):
+        self.rem = self.getconfig('rem')
+        name = self.getconfig('name')
         if name:
             self.name = name
-        elif name_:
-            self.name = name_
         else:
             self.name = self.id
-        if rem:
-            self.rem = rem
-        else:
-            self.rem = rem_
 
     def _parse(self) -> Tuple[List[int], List[int], List[str], str]:
         return self.DefaultList, self.DefaultList, ['url'], self.DefaultLog
@@ -84,6 +78,10 @@ class Soft(object):
 class Driver(Soft):
     needConfig = True
 
-    def __init__(self, url: str, name='', rem=''):
-        super().__init__(name, rem=rem)
-        self.url = url
+    def __init__(self):
+        super().__init__()
+        self.url = self.getconfig('url')
+
+    def config(self):
+        super().config()
+        self.setconfig('url', input(_('input your url(required): ')))
