@@ -10,14 +10,14 @@ from .utils import Download, GetPage
 _ = gettext.gettext
 
 
-def LoadFile(path):
+def LoadFile(path: str):
     spec = importlib.util.spec_from_file_location('Package', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.Package()
 
 
-def Configurate(path):
+def Configurate(path: str):
     pkg = LoadFile(path)
     if pkg.isMultiple:
         i = int(
@@ -31,10 +31,7 @@ def Configurate(path):
         pkg.config()
 
 
-def Load(source: str, installed=True, sync=True):
-    # json/py
-    if not installed:
-        sync = True
+def Save(source: str, sync=True):
     if source.endswith('.py'):
         if source.startswith('http'):
             name = source.split('/')[-1]
@@ -51,6 +48,15 @@ def Load(source: str, installed=True, sync=True):
                               '.ver.json', abspath=abspath)
         else:
             filepath = source
+    return filepath
+
+
+def Load(source: str, installed=True, sync=True):
+    # json/py
+    if not installed:
+        sync = True
+    if source.endswith('.py'):
+        filepath = Save(source, sync)
         pkg = LoadFile(filepath)
         if pkg.needConfig and not installed:
             Configurate(filepath)
