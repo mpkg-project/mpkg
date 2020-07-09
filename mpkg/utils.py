@@ -14,11 +14,16 @@ _ = gettext.gettext
 downloader = GetConfig('downloader')
 
 
-def GetPage(url: str, **kwargs) -> str:
-    return requests.get(url, **kwargs).text
+def GetPage(url: str, warn=True, **kwargs) -> str:
+    res = requests.get(url, **kwargs)
+    if warn and res.status_code != 200:
+        print(f'warning: {url} {res.status_code}')
+        return 'error'
+    return res.text
 
 
 def Download(url: str, directory=HOME, filename=False):
+    print(_('downloading {url}').format(url=url))
     directory = Path(directory)
     file = directory / filename
     if not directory.exists():

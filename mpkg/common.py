@@ -25,6 +25,8 @@ class Soft(object):
     def __init__(self):
         self.rem = self.getconfig('rem')
         name = self.getconfig('name')
+        if self.isMultiple:
+            self.needConfig = True
         if name:
             self.name = name
         else:
