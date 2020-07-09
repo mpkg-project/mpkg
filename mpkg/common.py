@@ -66,13 +66,15 @@ class Soft(object):
         data['id'] = self.id
         data['ver'] = self.ver
         data['links'] = self.links
+        if self.isMultiple:
+            data['cfg'] = self.cfg
         if self.date != self.DefaultList:
             data['date'] = self.date
         if self.rem:
             data['rem'] = self.rem
         if self.log:
             data['changelog'] = self.log
-        if self.name:
+        if self.name != self.id:
             data['name'] = self.name
         self.data = {'packages': [data]}
 

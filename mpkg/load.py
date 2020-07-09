@@ -7,7 +7,7 @@ import json
 from multiprocessing.dummy import Pool
 
 from .config import HOME, GetConfig, SetConfig
-from .utils import Download, GetPage
+from .utils import Download, GetPage, Name
 
 _ = gettext.gettext
 
@@ -108,7 +108,7 @@ def HasConflict(softs, pkgs) -> list:
     return [id for id in ids if ids.count(id) > 1]
 
 
-def GetSofts(jobs: 10, sync=True) -> list:
+def GetSofts(jobs=10, sync=True) -> list:
     with Pool(jobs) as p:
         items = [x for x in p.map(Load, GetConfig('sources')) if x]
     softs, pkgs, sources = [], [], []
@@ -134,4 +134,7 @@ def GetSofts(jobs: 10, sync=True) -> list:
     a = [pkg.data['packages'] for pkg in pkgs]
     for x in a:
         softs += x
+    if not softs == GetConfig('softs', filename='softs.json'):
+        SetConfig('softs', softs, filename='softs.json')
+    Name(softs)
     return softs

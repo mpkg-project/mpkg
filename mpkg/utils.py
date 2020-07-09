@@ -62,5 +62,32 @@ def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
     return cfg
 
 
+def Name(softs):
+    names, ids = [], []
+    multiple, named = [], []
+    for soft in softs:
+        cfg = soft.get('cfg')
+        if cfg:
+            multiple.append(soft)
+        name = soft.get('name')
+        if name:
+            names.append(name)
+            named.append(soft)
+        ids.append(soft['id'])
+    for soft in named:
+        if soft['name'] in ids or names.count(soft['name']) > 1:
+            soft['name'] = soft['name']+'-'+soft['id']
+    for soft in multiple:
+        if not soft.get('name'):
+            soft['name'] = soft['id']+'.'+soft['name'].split('.')[-1]
+    names = []
+    for soft in softs:
+        if not soft.get('name'):
+            soft['name'] = soft['id']
+        names.append(soft['name'])
+    if len(names) != len(set(names)):
+        print(f'warning: name conflict\n{names}')
+
+
 def IsLatest(bydate=False):
     pass
