@@ -4,6 +4,7 @@
 import gettext
 import importlib
 import json
+from multiprocessing.dummy import Pool
 
 from .config import HOME, GetConfig, SetConfig
 from .utils import Download, GetPage
@@ -77,10 +78,42 @@ def Load(source: str, installed=True, sync=True):
                 pkgs.append(newpkg)
         else:
             pkgs = [pkg]
-        return pkgs
+        return pkgs, '.py'
     elif source.endswith('.json'):
         filepath = Save(source, sync)
         with open(filepath, 'r', encoding="utf8") as f:
-            return json.load(f)['packages']
+            return json.load(f)['packages'], '.json'
     elif source.endswith('.sources'):
         pass
+
+
+def HasConflict(softs, pkgs) -> list:
+    ids = []
+    for item in pkgs:
+        if item.isMultiple and item.id in ids:
+            pass
+        else:
+            ids.append(item.id)
+    [ids.append(item['id']) for item in softs]
+    return [id for id in ids if ids.count(id) > 1]
+
+
+def GetSofts(jobs: 10, sync=True) -> list:
+    with Pool(jobs) as p:
+        items = [x for x in p.map(Load, GetConfig('sources')) if x]
+    softs, pkgs = [], []
+    a = [x for x, ext in items if ext == '.json']
+    b = [x for x, ext in items if ext == '.py']
+    for x in a:
+        softs += x
+    for x in b:
+        pkgs += x
+    score = HasConflict(softs, pkgs)
+    if score:
+        print(f'warning(id conflict): {set(score)}')
+    with Pool(jobs) as p:
+        p.map(lambda x: x.prepare(), pkgs)
+    a = [pkg.data['packages'] for pkg in pkgs]
+    for x in a:
+        softs += x
+    return softs

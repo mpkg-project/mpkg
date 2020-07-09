@@ -2,20 +2,15 @@
 # coding: utf-8
 
 import gettext
-from multiprocessing.dummy import Pool
 from pprint import pformat, pprint
 
 import click
 
 from .config import GetConfig, SetConfig
-from .load import Load
+from .load import GetSofts, Load
 from .utils import Selected
 
 _ = gettext.gettext
-
-
-def prepare(soft):
-    soft.prepare()
 
 
 @click.group()
@@ -32,19 +27,8 @@ def cli():
 # @click.option('-v', default=False, help=_('show all packages'))
 # @click.option('-i', '--install', default=False, help=_('install packages'))
 def check(jobs, download, all, bydate, sync):
-    SOFTS = []
-    for item in GetConfig('sources'):
-        SOFTS += Load(item, sync=sync)
-    if all:
-        soft_list = SOFTS
-    else:
-        soft_list = Selected(SOFTS, isSoft=True)
-
-    with Pool(jobs) as p:
-        p.map(prepare, soft_list)
-
-    for soft in soft_list:
-        pprint(soft.data)
+    SOFTS = GetSofts(jobs, sync)
+    pprint(SOFTS)
 
     '''soft_list = [soft for soft in soft_list if not soft.isLatest]
 
@@ -60,7 +44,7 @@ def config(force, load):
     if not force and GetConfig('sources'):
         print(_('pass'))
     else:
-        SetConfig('downloader', 'wget -O "{file}" "{url}"')
+        SetConfig('downloader', 'wget -q -O "{file}" "{url}"')
         sources = []
         while True:
             s = input(_('\n input sources(press enter to pass): '))
