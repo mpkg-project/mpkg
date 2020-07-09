@@ -33,15 +33,21 @@ def Configurate(path: str):
         pkg.config()
 
 
-def Save(source: str, sync=True):
+def Save(source: str, ver=-1, sync=True, check_ver=True):
 
-    def download(url, filetype, sync=True):
+    def download(url, verattr, filetype, sync, check_ver):
         filename = url.split('/')[-1]
         abspath = HOME / filetype
         filepath = HOME / filetype / filename
         if sync:
-            res = GetPage(url + '.ver', warn=False).replace(' ', '')
-            ver = -1 if not res.isnumeric() else int(res)
+            if not check_ver:
+                Download(url, directory=abspath, filename=filename)
+                return filepath
+            if verattr == -1:
+                res = GetPage(url + '.ver', warn=False).replace(' ', '')
+                ver = -1 if not res.isnumeric() else int(res)
+            else:
+                ver = verattr
             ver_ = GetConfig(filename, filename=filename +
                              '.ver.json', abspath=abspath)
             ver_ = -1 if not ver_ else int(ver_)
@@ -53,19 +59,19 @@ def Save(source: str, sync=True):
 
     if source.startswith('http'):
         if source.endswith('.py'):
-            filepath = download(source, 'py', sync)
+            filepath = download(source, ver, 'py', sync, check_ver)
         elif source.endswith('.json'):
-            filepath = download(source, 'json', sync)
+            filepath = download(source, ver, 'json', sync, check_ver)
     else:
         filepath = source
     return filepath
 
 
-def Load(source: str, installed=True, sync=True):
+def Load(source: str, ver=-1, installed=True, sync=True):
     if not installed:
         sync = True
     if source.endswith('.py'):
-        filepath = Save(source, sync)
+        filepath = Save(source, ver, sync)
         pkg = LoadFile(filepath)
         if pkg.needConfig and not installed:
             Configurate(filepath)
@@ -80,11 +86,15 @@ def Load(source: str, installed=True, sync=True):
             pkgs = [pkg]
         return pkgs, '.py'
     elif source.endswith('.json'):
-        filepath = Save(source, sync)
+        filepath = Save(source, ver, sync)
         with open(filepath, 'r', encoding="utf8") as f:
             return json.load(f)['packages'], '.json'
-    elif source.endswith('.sources'):
-        pass
+    elif source.endswith('.sources') and source.startswith('http'):
+        sources = json.loads(GetPage(source))
+        with Pool(10) as p:
+            score = [x for x in p.map(lambda x: Load(
+                x[0], x[1]), sources.items()) if x]
+        return score, '.sources'
 
 
 def HasConflict(softs, pkgs) -> list:
@@ -101,9 +111,17 @@ def HasConflict(softs, pkgs) -> list:
 def GetSofts(jobs: 10, sync=True) -> list:
     with Pool(jobs) as p:
         items = [x for x in p.map(Load, GetConfig('sources')) if x]
-    softs, pkgs = [], []
+    softs, pkgs, sources = [], [], []
     a = [x for x, ext in items if ext == '.json']
     b = [x for x, ext in items if ext == '.py']
+    c = [x for x, ext in items if ext == '.sources']
+    for x in c:
+        sources += x
+    for x, ext in sources:
+        if ext == '.json':
+            a.append(x)
+        elif ext == '.py':
+            b.append(x)
     for x in a:
         softs += x
     for x in b:
