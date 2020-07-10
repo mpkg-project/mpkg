@@ -11,15 +11,16 @@ _ = gettext.gettext
 
 
 class Soft(object):
-    id = 'Soft'
+    id = ''
     cfg = 'config.json'
     isMultiple = False
     allowExtract = False
     isPrepared = False
     needConfig = False
     SilentArgs = ''
-    DefaultList = [-1, -1, -1]
+    DefaultList = []
     DefaultStr = ''
+    DefaultDict = {}
 
     def __init__(self):
         self.rem = self.getconfig('rem')
@@ -30,7 +31,7 @@ class Soft(object):
             self.name = name
         else:
             self.name = self.id
-        self.ver,  self.links = self.DefaultStr, self.DefaultList
+        self.ver,  self.links, self.link = self.DefaultStr, self.DefaultList, self.DefaultDict
         self.date, self.log = self.DefaultList, self.DefaultStr
 
     def _prepare(self):
@@ -54,9 +55,6 @@ class Soft(object):
             self.prepare()
         return json.dumps(self.data).encode('utf-8')
 
-    def links2link(self):
-        self.link = ToLink(self.links)
-
     def prepare(self):
         self.isPrepared = True
         self._prepare()
@@ -67,6 +65,8 @@ class Soft(object):
             data['args'] = self.SilentArgs
         if self.links != self.DefaultList:
             data['links'] = self.links
+        if self.link != self.DefaultDict:
+            data['link'] = self.link
         if self.isMultiple:
             data['cfg'] = self.cfg
         if self.date != self.DefaultList:

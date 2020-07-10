@@ -3,6 +3,7 @@
 
 import gettext
 import os
+import time
 from pathlib import Path
 from platform import architecture
 
@@ -100,16 +101,21 @@ def Name(softs):
         print(f'warning: name conflict\n{names}')
 
 
-def GetOutdated(bydate=False):
+def GetOutdated():
     installed = GetConfig(filename='installed.json')
     latest = {}
     for soft in GetConfig('softs', filename='softs.json'):
         latest[soft['name']] = [soft['ver'], soft.get('date')]
-    outdated = []
+    outdated = {}
     for name, value in installed.items():
-        if value[0] != latest[name][0]:
-            outdated.append(name)
+        date = latest[name][1]
+        if date:
+            date = time.strftime(
+                '%y%m%d', time.strptime(date, '%Y-%m-%d'))
         else:
-            if bydate and latest[name][1] and value[1] != latest[name][1]:
-                outdated.append(name)
+            date = ''
+        if value[0] != latest[name][0]:
+            outdated[name] = [date, value[0], latest[name][0]]
+        elif latest[name][1] and value[1] != latest[name][1]:
+            outdated[name] = [date, value[0], latest[name][0]]
     return outdated

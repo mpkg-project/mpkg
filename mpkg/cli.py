@@ -17,25 +17,33 @@ _ = gettext.gettext
 arch = architecture()[0]
 
 
-@click.group()
+@click.group(context_settings=dict(help_option_names=['-h', '--help']))
 def cli():
     pass
 
 
 @cli.command()
 @click.option('-j', '--jobs', default=10, help=_('threads'))
-@click.option('--bydate', is_flag=True, help=_('check outdated packages by ver and date'))
 @click.option('--sync/--no-sync', default=True, help=_('sync source files'))
-# @click.option('-i', '--install', default=False, help=_('install packages'))
-def sync(jobs, bydate, sync):
+def sync(jobs, sync):
     softs = GetSofts(jobs, sync, use_cache=False)
-    pprint(softs)
-
-    '''soft_list = [soft for soft in soft_list if not soft.isLatest]
-
-    if download:
-        for soft in soft_list:
-            soft.download()'''
+    names = [soft['name'] for soft in softs]
+    outdated = sorted(list(GetOutdated().items()),
+                      key=lambda x: x[1][0], reverse=True)
+    if len(outdated) == 0:
+        print(_('Already up to date.'))
+    else:
+        for name, value in outdated:
+            soft = softs[names.index(name)]
+            print()
+            if value[0]:
+                print(f'{name}|{value[0]}\t{value[1]}->{value[2]}')
+            else:
+                print(f'{name}\t{value[1]}->{value[2]}')
+            if soft.get('rem'):
+                print(f' rem: {soft["rem"]}')
+            if soft.get('changelog'):
+                print(f' changelog: {soft["changelog"]}')
 
 
 @cli.command()
@@ -59,19 +67,27 @@ def config(force, load):
         SetConfig('sources', sources)
 
 
-@cli.command()
-@click.argument('package')
+def set_():
+    pass
+
+
+@click.argument('packages', nargs=-1)
 @click.option('-d', '--download', is_flag=True)
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('--dry-run', is_flag=True)
-def install(package, download, outdated, dry_run):
-    softs = GetSofts()
-    if package:
-        softs = [x for x in softs if x['name'] == package]
+def install(packages, download, outdated, dry_run):
+    packages = [pkg.lower() for pkg in packages]
+    softs_all = GetSofts()
+    if packages:
+        softs = [x for x in softs_all if x['name'].lower() in packages]
     elif outdated:
-        pass
+        softs = [x for x in softs_all if x['name']
+                 in list(GetOutdated().keys())]
+    else:
+        print(install.get_help(click.core.Context(install)))
+        return
     for soft in softs:
-        if not soft.get('link'):
+        if not soft.get('link') and not dry_run:
             soft['link'] = ToLink(soft['links'])
         if not soft.get('date'):
             soft['date'] = Soft.DefaultList
@@ -93,20 +109,34 @@ def install(package, download, outdated, dry_run):
             os.system(command)
 
 
+@cli.command()
+@click.argument('packages', nargs=-1)
+def remove(packages):
+    packages = [pkg.lower() for pkg in packages]
+    softs_all = GetSofts()
+    if packages:
+        softs = [x for x in softs_all if x['name'].lower() in packages]
+        for soft in softs:
+            SetConfig(soft['name'], filename='installed.json', delete=True)
+    else:
+        print(remove.get_help(click.core.Context(remove)))
+        return
+
+
 @cli.command('list')
-@click.argument('package', required=False)
+@click.argument('packages', nargs=-1)
 @click.option('-o', '--outdated', is_flag=True)
-@click.option('--bydate', is_flag=True, help=_('check outdated packages by ver and date'))
 @click.option('-i', '--installed', is_flag=True)
-def list_(package, outdated, installed, bydate):
+def list_(packages, outdated, installed):
+    packages = [pkg.lower() for pkg in packages]
     softs = GetSofts()
     if installed:
         pkgs = GetConfig(filename='installed.json')
         pprint(list(pkgs.keys()))
     elif outdated:
-        pprint(GetOutdated(bydate))
-    elif package:
-        pprint([x for x in softs if x['name'] == package])
+        pprint(list(GetOutdated().keys()))
+    elif packages:
+        pprint([x for x in softs if x['name'].lower() in packages])
     else:
         pprint([x['name'] for x in softs])
 

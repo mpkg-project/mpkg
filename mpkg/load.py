@@ -93,7 +93,7 @@ def Load(source: str, ver=-1, installed=True, sync=True):
         sources = json.loads(GetPage(source))
         with Pool(10) as p:
             score = [x for x in p.map(lambda x: Load(
-                x[0], x[1]), sources.items()) if x]
+                x[0], x[1], installed, sync), sources.items()) if x]
         return score, '.sources'
 
 
@@ -120,10 +120,11 @@ def Sorted(items):
             a.append(x)
         elif ext == '.py':
             b.append(x)
-    for x in a:
-        softs += x
-    for x in b:
-        pkgs += x
+    for soft in a:
+        softs += soft
+    for pkg in b:
+        pkgs += pkg
+    pkgs = [pkg for pkg in pkgs if pkg.id]
     return softs, pkgs
 
 

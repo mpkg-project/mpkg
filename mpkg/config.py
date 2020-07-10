@@ -11,8 +11,8 @@ if not HOME.exists():
     HOME.mkdir(parents=True)
 
 
-def SetConfig(key: str, value=True, path='', filename='config.json', abspath=''):
-    if GetConfig(key, path, filename, abspath) == value:
+def SetConfig(key: str, value=True, path='', filename='config.json', abspath='', delete=False):
+    if not delete and GetConfig(key, path, filename, abspath) == value:
         return
     path_ = HOME / 'config' / path if not abspath else Path(abspath)
     file = path_ / filename
@@ -24,6 +24,8 @@ def SetConfig(key: str, value=True, path='', filename='config.json', abspath='')
     with file.open('r') as f:
         data = json.loads(f.read())
     data[key] = value
+    if delete:
+        del data[key]
     with file.open('w') as f:
         f.write(json.dumps(data))
 
