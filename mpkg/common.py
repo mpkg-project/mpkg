@@ -3,24 +3,23 @@
 
 import gettext
 import json
-from typing import List, Tuple
 
 from .config import GetConfig, SetConfig
-from .utils import Download, Selected
+from .utils import Download, Selected, ToLink
 
 _ = gettext.gettext
 
 
 class Soft(object):
     id = 'Soft'
-    silentArgs = ''
     cfg = 'config.json'
     isMultiple = False
     allowExtract = False
     isPrepared = False
     needConfig = False
+    SilentArgs = ''
     DefaultList = [-1, -1, -1]
-    DefaultLog = ''
+    DefaultStr = ''
 
     def __init__(self):
         self.rem = self.getconfig('rem')
@@ -31,9 +30,11 @@ class Soft(object):
             self.name = name
         else:
             self.name = self.id
+        self.ver,  self.links = self.DefaultStr, self.DefaultList
+        self.date, self.log = self.DefaultList, self.DefaultStr
 
-    def _parse(self) -> Tuple[List[int], List[int], List[str], str]:
-        return self.DefaultList, self.DefaultList, ['url'], self.DefaultLog
+    def _prepare(self):
+        pass
 
     def config(self):
         print(_('\n configuring {0} (press enter to pass)').format(self.id))
@@ -53,19 +54,19 @@ class Soft(object):
             self.prepare()
         return json.dumps(self.data).encode('utf-8')
 
-    def selectlink(self):
-        if len(self.links) != 1:
-            self.link = Selected(self.links, msg=_('select a link:'))[0]
-        else:
-            self.link = self.links[0]
+    def links2link(self):
+        self.link = ToLink(self.links)
 
     def prepare(self):
         self.isPrepared = True
-        self.ver, self.date, self.links, self.log = self._parse()
+        self._prepare()
         data = {}
         data['id'] = self.id
         data['ver'] = self.ver
-        data['links'] = self.links
+        if self.SilentArgs:
+            data['args'] = self.SilentArgs
+        if self.links != self.DefaultList:
+            data['links'] = self.links
         if self.isMultiple:
             data['cfg'] = self.cfg
         if self.date != self.DefaultList:

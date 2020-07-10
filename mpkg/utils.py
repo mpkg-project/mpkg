@@ -4,12 +4,14 @@
 import gettext
 import os
 from pathlib import Path
+from platform import architecture
 
 import requests
 
 from .config import HOME, GetConfig, SetConfig
 
 _ = gettext.gettext
+arch = architecture()[0]
 
 downloader = GetConfig('downloader')
 
@@ -22,25 +24,26 @@ def GetPage(url: str, warn=True, **kwargs) -> str:
     return res.text
 
 
-def Download(url: str, directory=HOME, filename=False):
-    print(_('downloading {url}').format(url=url))
+def Download(url: str, directory=HOME, filename='', output=True):
     directory = Path(directory)
-    file = directory / filename
     if not directory.exists():
         directory.mkdir(parents=True)
     if not filename:
         filename = url.split('/')[-1]
-    if '{file}' in downloader:
-        command = downloader.format(url=url, file=file)
+    file = directory / filename
+    if output:
+        print(_('downloading {url}').format(url=url))
+        print(_('saving to {path}').format(path=file))
+    if '{filepath}' in downloader:
+        command = downloader.format(url=url, filepath=file)
     else:
         command = downloader.format(
             url=url, directory=directory, filename=filename)
     os.system(command)
-    file = directory / filename
     if not file.is_file():
         print(f'warning: no {file}')
         print(f'command: {command}')
-    return str(file)
+    return file
 
 
 def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
@@ -60,6 +63,14 @@ def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
         else:
             cfg.append(L[int(i)])
     return cfg
+
+
+def ToLink(links: list):
+    if len(links) != 1:
+        link = Selected(links, msg=_('select a link:'))[0]
+        return {arch: link}
+    else:
+        return {arch: links[0]}
 
 
 def Name(softs):
