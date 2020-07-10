@@ -11,7 +11,7 @@ import click
 from .common import Soft
 from .config import HOME, GetConfig, SetConfig
 from .load import GetSofts, Load
-from .utils import Download, Selected, ToLink
+from .utils import Download, GetOutdated, Selected, ToLink
 
 _ = gettext.gettext
 arch = architecture()[0]
@@ -24,11 +24,11 @@ def cli():
 
 @cli.command()
 @click.option('-j', '--jobs', default=10, help=_('threads'))
-@click.option('--bydate', is_flag=True, help=_('check version by date'))
+@click.option('--bydate', is_flag=True, help=_('check outdated packages by ver and date'))
 @click.option('--sync/--no-sync', default=True, help=_('sync source files'))
 # @click.option('-i', '--install', default=False, help=_('install packages'))
 def sync(jobs, bydate, sync):
-    softs = GetSofts(jobs, sync)
+    softs = GetSofts(jobs, sync, use_cache=False)
     pprint(softs)
 
     '''soft_list = [soft for soft in soft_list if not soft.isLatest]
@@ -63,8 +63,9 @@ def config(force, load):
 @click.argument('package')
 @click.option('-d', '--download', is_flag=True)
 @click.option('-o', '--outdated', is_flag=True)
-def install(package, download, outdated):
-    softs = GetConfig('softs', filename='softs.json')
+@click.option('--dry-run', is_flag=True)
+def install(package, download, outdated, dry_run):
+    softs = GetSofts()
     if package:
         softs = [x for x in softs if x['name'] == package]
     elif outdated:
@@ -79,6 +80,8 @@ def install(package, download, outdated):
     for soft in softs:
         SetConfig(soft['name'], [soft['ver'], soft['date']],
                   filename='installed.json')
+        if dry_run:
+            return
         file = Download(soft['link'][arch],
                         directory=GetConfig('download_dir'))
         command = str(file)+' '+soft['args']
@@ -90,13 +93,19 @@ def install(package, download, outdated):
             os.system(command)
 
 
-@cli.command()
+@cli.command('list')
 @click.argument('package', required=False)
-def list(package):
-    softs = GetConfig('softs', filename='softs.json')
-    if not softs:
-        softs = GetSofts()
-    if package:
+@click.option('-o', '--outdated', is_flag=True)
+@click.option('--bydate', is_flag=True, help=_('check outdated packages by ver and date'))
+@click.option('-i', '--installed', is_flag=True)
+def list_(package, outdated, installed, bydate):
+    softs = GetSofts()
+    if installed:
+        pkgs = GetConfig(filename='installed.json')
+        pprint(list(pkgs.keys()))
+    elif outdated:
+        pprint(GetOutdated(bydate))
+    elif package:
         pprint([x for x in softs if x['name'] == package])
     else:
         pprint([x['name'] for x in softs])

@@ -108,9 +108,7 @@ def HasConflict(softs, pkgs) -> list:
     return [id for id in ids if ids.count(id) > 1]
 
 
-def GetSofts(jobs=10, sync=True) -> list:
-    with Pool(jobs) as p:
-        items = [x for x in p.map(Load, GetConfig('sources')) if x]
+def Sorted(items):
     softs, pkgs, sources = [], [], []
     a = [x for x, ext in items if ext == '.json']
     b = [x for x, ext in items if ext == '.py']
@@ -126,15 +124,29 @@ def GetSofts(jobs=10, sync=True) -> list:
         softs += x
     for x in b:
         pkgs += x
+    return softs, pkgs
+
+
+def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
+    softs_ = GetConfig('softs', filename='softs.json')
+    if softs_ and use_cache:
+        return softs_
+
+    with Pool(jobs) as p:
+        items = [x for x in p.map(Load, GetConfig('sources')) if x]
+    softs, pkgs = Sorted(items)
+
     score = HasConflict(softs, pkgs)
     if score:
         print(f'warning(id conflict): {set(score)}')
+
     with Pool(jobs) as p:
         p.map(lambda x: x.prepare(), pkgs)
-    a = [pkg.data['packages'] for pkg in pkgs]
-    for x in a:
-        softs += x
-    if not softs == GetConfig('softs', filename='softs.json'):
+    for soft in [pkg.data['packages'] for pkg in pkgs]:
+        softs += soft
+
+    if not softs == softs_:
         SetConfig('softs', softs, filename='softs.json')
+
     Name(softs)
     return softs

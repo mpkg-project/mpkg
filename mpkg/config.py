@@ -28,11 +28,14 @@ def SetConfig(key: str, value=True, path='', filename='config.json', abspath='')
         f.write(json.dumps(data))
 
 
-def GetConfig(key: str, path='', filename='config.json', abspath=''):
+def GetConfig(key='', path='', filename='config.json', abspath=''):
     path_ = HOME / 'config' / path if not abspath else Path(abspath)
     file = path_ / filename
     if not file.exists():
         return
     with file.open('r') as f:
         data = json.loads(f.read())
-    return data.get(key)
+    if key:
+        return data.get(key)
+    else:
+        return data

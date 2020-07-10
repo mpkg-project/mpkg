@@ -100,5 +100,16 @@ def Name(softs):
         print(f'warning: name conflict\n{names}')
 
 
-def IsLatest(bydate=False):
-    pass
+def GetOutdated(bydate=False):
+    installed = GetConfig(filename='installed.json')
+    latest = {}
+    for soft in GetConfig('softs', filename='softs.json'):
+        latest[soft['name']] = [soft['ver'], soft.get('date')]
+    outdated = []
+    for name, value in installed.items():
+        if value[0] != latest[name][0]:
+            outdated.append(name)
+        else:
+            if bydate and latest[name][1] and value[1] != latest[name][1]:
+                outdated.append(name)
+    return outdated
