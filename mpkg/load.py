@@ -38,10 +38,13 @@ def Configurate(path: str):
 
 def Save(source: str, ver=-1, sync=True, check_ver=True):
     latest = False  # old source is not latest
+    name = ''
+    if '->' in source:
+        source, name = source.split('->')
 
-    def download(url, verattr, filetype, sync, check_ver):
+    def download(url, name, verattr, filetype, sync, check_ver):
         latest = False
-        filename = url.split('/')[-1]
+        filename = url.split('/')[-1] if not name else name
         abspath = HOME / filetype
         filepath = HOME / filetype / filename
         if sync:
@@ -66,21 +69,22 @@ def Save(source: str, ver=-1, sync=True, check_ver=True):
 
     if source.startswith('http'):
         if source.endswith('.py'):
-            filepath, latest = download(source, ver, 'py', sync, check_ver)
+            filepath, latest = download(
+                source, name, ver, 'py', sync, check_ver)
         elif source.endswith('.json'):
-            filepath, latest = download(source, ver, 'json', sync, check_ver)
+            filepath, latest = download(
+                source, name, ver, 'json', sync, check_ver)
         elif source.endswith('.zip'):
-            filepath, latest = download(source, ver, 'zip', sync, check_ver)
+            filepath, latest = download(
+                source, name, ver, 'zip', sync, check_ver)
     else:
         filepath = source
     return filepath, latest
 
 
-def LoadZip(filepath, latest=False, installed=True, name=''):
+def LoadZip(filepath, latest=False, installed=True):
     filepath = Path(filepath)
-    if not name:
-        name = filepath.name
-    dir = filepath.parent / name[:-4]
+    dir = filepath.parent / filepath.name[:-4]
     pkgdir = dir / 'packages'
     if not latest:
         with ZipFile(filepath, 'r') as myzip:
@@ -143,12 +147,10 @@ def Sorted(items):
     b = [x for x, ext in items if ext == '.py']
     c = [x for x, ext in items if ext == '.sources']
     d = [x for x, ext in items if ext == '.zip']
-    for x in d:
-        for y, ext in x:
-            if ext == '.json':
-                a.append(y)
-            elif ext == '.py':
-                b.append(y)
+    # a=[[soft1, soft2]]
+    # b=[[pkg1, pkg2]]
+    # c=[[(x1,ext),(x2,ext)]], x1=a/b/d[0]
+    # d=[[(x1,ext),(x2,ext)]], x1=a/b[0]
     for x in c:
         sources += x
     for x, ext in sources:
@@ -156,6 +158,14 @@ def Sorted(items):
             a.append(x)
         elif ext == '.py':
             b.append(x)
+        elif ext == '.zip':
+            d.append(x)
+    for x in d:
+        for y, ext in x:
+            if ext == '.json':
+                a.append(y)
+            elif ext == '.py':
+                b.append(y)
     for soft in a:
         softs += soft
     for pkg in b:

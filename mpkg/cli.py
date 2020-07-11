@@ -71,6 +71,7 @@ def set_():
     pass
 
 
+@cli.command()
 @click.argument('packages', nargs=-1)
 @click.option('-d', '--download', is_flag=True)
 @click.option('-o', '--outdated', is_flag=True)
@@ -113,11 +114,11 @@ def install(packages, download, outdated, dry_run):
 @click.argument('packages', nargs=-1)
 def remove(packages):
     packages = [pkg.lower() for pkg in packages]
-    softs_all = GetSofts()
     if packages:
-        softs = [x for x in softs_all if x['name'].lower() in packages]
-        for soft in softs:
-            SetConfig(soft['name'], filename='installed.json', delete=True)
+        pkgs = GetConfig(filename='installed.json')
+        names = [x for x in list(pkgs.keys()) if x.lower() in packages]
+        for name in names:
+            SetConfig(name, filename='installed.json', delete=True)
     else:
         print(remove.get_help(click.core.Context(remove)))
         return
