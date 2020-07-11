@@ -4,7 +4,10 @@
 import gettext
 import importlib
 import json
+import os
 from multiprocessing.dummy import Pool
+from pathlib import Path
+from zipfile import ZipFile
 
 from .config import HOME, GetConfig, SetConfig
 from .utils import Download, GetPage, Name
@@ -34,15 +37,17 @@ def Configurate(path: str):
 
 
 def Save(source: str, ver=-1, sync=True, check_ver=True):
+    latest = False  # old source is not latest
 
     def download(url, verattr, filetype, sync, check_ver):
+        latest = False
         filename = url.split('/')[-1]
         abspath = HOME / filetype
         filepath = HOME / filetype / filename
         if sync:
             if not check_ver:
                 Download(url, directory=abspath, filename=filename)
-                return filepath
+                return filepath, latest
             if verattr == -1:
                 res = GetPage(url + '.ver', warn=False).replace(' ', '')
                 ver = -1 if not res.isnumeric() else int(res)
@@ -55,23 +60,44 @@ def Save(source: str, ver=-1, sync=True, check_ver=True):
                 Download(url, directory=abspath, filename=filename)
                 SetConfig(filename, ver, filename=filename +
                           '.ver.json', abspath=abspath)
-        return filepath
+            else:
+                latest = True
+        return filepath, latest
 
     if source.startswith('http'):
         if source.endswith('.py'):
-            filepath = download(source, ver, 'py', sync, check_ver)
+            filepath, latest = download(source, ver, 'py', sync, check_ver)
         elif source.endswith('.json'):
-            filepath = download(source, ver, 'json', sync, check_ver)
+            filepath, latest = download(source, ver, 'json', sync, check_ver)
+        elif source.endswith('.zip'):
+            filepath, latest = download(source, ver, 'zip', sync, check_ver)
     else:
         filepath = source
-    return filepath
+    return filepath, latest
+
+
+def LoadZip(filepath, latest=False, installed=True, name=''):
+    filepath = Path(filepath)
+    if not name:
+        name = filepath.name
+    dir = filepath.parent / name[:-4]
+    pkgdir = dir / 'packages'
+    if not latest:
+        with ZipFile(filepath, 'r') as myzip:
+            files = [name for name in myzip.namelist() if 'packages/' in name]
+            myzip.extractall(path=str(dir), members=files)
+        if not pkgdir.exists():
+            (dir / files[0]).rename(str(pkgdir))
+    files = [str((pkgdir/file).absolute()) for file in os.listdir(pkgdir)
+             if file.endswith('.py') or file.endswith('.json')]
+    return [Load(file, installed=installed) for file in files]
 
 
 def Load(source: str, ver=-1, installed=True, sync=True):
     if not installed:
         sync = True
     if source.endswith('.py'):
-        filepath = Save(source, ver, sync)
+        filepath = Save(source, ver, sync)[0]
         pkg = LoadFile(filepath)
         if pkg.needConfig and not installed:
             Configurate(filepath)
@@ -86,9 +112,12 @@ def Load(source: str, ver=-1, installed=True, sync=True):
             pkgs = [pkg]
         return pkgs, '.py'
     elif source.endswith('.json'):
-        filepath = Save(source, ver, sync)
+        filepath = Save(source, ver, sync)[0]
         with open(filepath, 'r', encoding="utf8") as f:
             return json.load(f)['packages'], '.json'
+    elif source.endswith('.zip'):
+        filepath, latest = Save(source, ver, sync)
+        return LoadZip(filepath, latest, installed), '.zip'
     elif source.endswith('.sources') and source.startswith('http'):
         sources = json.loads(GetPage(source))
         with Pool(10) as p:
@@ -113,6 +142,13 @@ def Sorted(items):
     a = [x for x, ext in items if ext == '.json']
     b = [x for x, ext in items if ext == '.py']
     c = [x for x, ext in items if ext == '.sources']
+    d = [x for x, ext in items if ext == '.zip']
+    for x in d:
+        for y, ext in x:
+            if ext == '.json':
+                a.append(y)
+            elif ext == '.py':
+                b.append(y)
     for x in c:
         sources += x
     for x, ext in sources:
@@ -134,7 +170,8 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
         return softs_
 
     with Pool(jobs) as p:
-        items = [x for x in p.map(Load, GetConfig('sources')) if x]
+        items = [x for x in p.map(lambda x:Load(
+            x, sync=sync), GetConfig('sources')) if x]
     softs, pkgs = Sorted(items)
 
     score = HasConflict(softs, pkgs)
