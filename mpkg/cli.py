@@ -11,7 +11,7 @@ import click
 
 from .common import Soft
 from .config import HOME, GetConfig, SetConfig
-from .load import GetSofts, Load, Names2Softs
+from .load import ConfigSoft, GetSofts, Load, Names2Softs
 from .utils import Download, GetOutdated, PreInstall, Selected, ToLink
 
 _ = gettext.gettext
@@ -48,10 +48,25 @@ def sync(jobs, sync):
 
 
 @cli.command()
+@click.argument('packages', nargs=-1)
 @click.option('-f', '--force', is_flag=True)
 @click.option('--load/--no-load', default=True)
 @click.option('--delete-all', is_flag=True)
-def config(force, load, delete_all):
+@click.option('--re-redirect', is_flag=True)
+def config(packages, force, load, delete_all, re_redirect):
+    if packages:
+        for soft in Names2Softs(packages):
+            ConfigSoft(soft)
+        return
+    if re_redirect:
+        rules = []
+        while True:
+            r = input(_('\n input pattern(press enter to pass): '))
+            if r:
+                rules.append({r: input(_(' redirect to: '))})
+            else:
+                SetConfig('redirect', rules)
+                return
     if not force and GetConfig('sources'):
         print(_('pass'))
     elif delete_all:
@@ -72,18 +87,27 @@ def config(force, load, delete_all):
 
 @cli.command('set')
 @click.argument('key')
-@click.argument('values', nargs=-1, required=True)
+@click.argument('values', nargs=-1)
 @click.option('islist', '--list', is_flag=True)
 @click.option('--prepare', is_flag=True)
-def set_(key, values, islist, prepare):
+@click.option('--add', is_flag=True)
+@click.option('--delete', is_flag=True)
+@click.option('--test', is_flag=True)
+def set_(key, values, islist, prepare, add, test, delete):
     if prepare:
         PreInstall()
+    if add:
+        islist = True
+        values = GetConfig(key)+list(values)
     if len(values) > 1 or islist:
         value = list(values)
-    else:
+    elif len(values) == 1:
         value = values[0]
-    print(_('set {key}={value}').format(key=key, value=value))
-    SetConfig(key, value)
+    else:
+        value = ''
+    print('set {key}={value}'.format(key=key, value=value))
+    if not test:
+        SetConfig(key, value, delete=delete)
 
 
 @cli.command()

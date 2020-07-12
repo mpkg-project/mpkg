@@ -180,6 +180,14 @@ def Sorted(items):
     return softs, pkgs
 
 
+def ConfigSoft(soft):
+    with Pool(10) as p:
+        items = [x for x in p.map(Load, GetConfig('sources')) if x]
+    pkgs = Sorted(items)[1]
+    pkg = [pkg for pkg in pkgs if pkg.name == soft['name']][0]
+    pkg.config()
+
+
 def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
     softs_ = GetConfig('softs', filename='softs.json')
     if softs_ and use_cache:

@@ -3,6 +3,7 @@
 
 import gettext
 import os
+import re
 import time
 from pathlib import Path
 from platform import architecture
@@ -16,7 +17,18 @@ _ = gettext.gettext
 arch = architecture()[0]
 
 
+def Redirect(url: str) -> str:
+    rules = GetConfig('redirect')
+    for rule in rules:
+        for pattern, to in rule.items():
+            m = re.match(pattern, url)
+            if m:
+                return to.format(*m.groups())
+    return url
+
+
 def GetPage(url: str, warn=True, **kwargs) -> str:
+    url = Redirect(url)
     res = requests.get(url, **kwargs)
     if warn and res.status_code != 200:
         print(f'warning: {url} {res.status_code}')
@@ -25,6 +37,7 @@ def GetPage(url: str, warn=True, **kwargs) -> str:
 
 
 def Download(url: str, directory='', filename='', output=True):
+    url = Redirect(url)
     if not directory:
         directory = GetConfig('download_dir')
     directory = Path(directory)
