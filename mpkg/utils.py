@@ -7,14 +7,13 @@ import time
 from pathlib import Path
 from platform import architecture
 
+import click
 import requests
 
 from .config import HOME, GetConfig, SetConfig
 
 _ = gettext.gettext
 arch = architecture()[0]
-
-downloader = GetConfig('downloader')
 
 
 def GetPage(url: str, warn=True, **kwargs) -> str:
@@ -25,7 +24,9 @@ def GetPage(url: str, warn=True, **kwargs) -> str:
     return res.text
 
 
-def Download(url: str, directory=HOME, filename='', output=True):
+def Download(url: str, directory='', filename='', output=True):
+    if not directory:
+        directory = GetConfig('download_dir')
     directory = Path(directory)
     if not directory.exists():
         directory.mkdir(parents=True)
@@ -35,12 +36,30 @@ def Download(url: str, directory=HOME, filename='', output=True):
     if output:
         print(_('downloading {url}').format(url=url))
         print(_('saving to {path}').format(path=file))
-    if '{filepath}' in downloader:
-        command = downloader.format(url=url, filepath=file)
+    downloader = GetConfig('downloader')
+    if downloader:
+        filepath, directory, filename = f'"{file}"', f'"{directory}"', f'"{filename}"'
+        if '{filepath}' in downloader:
+            command = downloader.format(url=url, filepath=filepath)
+        else:
+            command = downloader.format(
+                url=url, directory=directory, filename=filename)
+        os.system(command)
     else:
-        command = downloader.format(
-            url=url, directory=directory, filename=filename)
-    os.system(command)
+        req = requests.get(url, stream=True)
+        if req.status_code != 200:
+            print(f'warning: {url} {req.status_code}')
+            print(' try to download it with downloader')
+            print('  if you have installed wget')
+            print(r'  try mpkg set downloader "wget -q -O {filepath} {url}"')
+        chunk_size = 4096
+        contents = req.iter_content(chunk_size=chunk_size)
+        length = int(req.headers['content-length'])/chunk_size
+        with click.progressbar(contents, length=length) as bar:
+            with open(str(file), 'wb') as f:
+                for chunk in bar:
+                    if chunk:
+                        f.write(chunk)
     if not file.is_file():
         print(f'warning: no {file}')
         print(f'command: {command}')
@@ -119,3 +138,11 @@ def GetOutdated():
         elif latest[name][1] and value[1] != latest[name][1]:
             outdated[name] = [date, value[0], latest[name][0]]
     return outdated
+
+
+def PreInstall():
+    SetConfig('download_dir', str(HOME))
+    for ext in ['py', 'json', 'zip']:
+        directory = HOME / ext
+        if not directory.exists():
+            directory.mkdir(parents=True)

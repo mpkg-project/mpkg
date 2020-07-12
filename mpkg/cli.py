@@ -3,6 +3,7 @@
 
 import gettext
 import os
+import shutil
 from platform import architecture
 from pprint import pformat, pprint
 
@@ -11,7 +12,7 @@ import click
 from .common import Soft
 from .config import HOME, GetConfig, SetConfig
 from .load import GetSofts, Load, Names2Softs
-from .utils import Download, GetOutdated, Selected, ToLink
+from .utils import Download, GetOutdated, PreInstall, Selected, ToLink
 
 _ = gettext.gettext
 arch = architecture()[0]
@@ -49,12 +50,14 @@ def sync(jobs, sync):
 @cli.command()
 @click.option('-f', '--force', is_flag=True)
 @click.option('--load/--no-load', default=True)
-def config(force, load):
+@click.option('--delete-all', is_flag=True)
+def config(force, load, delete_all):
     if not force and GetConfig('sources'):
         print(_('pass'))
+    elif delete_all:
+        shutil.rmtree(HOME)
     else:
-        SetConfig('downloader', 'wget -q -O "{filepath}" "{url}"')
-        SetConfig('download_dir', str(HOME))
+        PreInstall()
         sources = []
         while True:
             s = input(_('\n input sources(press enter to pass): '))
@@ -71,11 +74,15 @@ def config(force, load):
 @click.argument('key')
 @click.argument('values', nargs=-1, required=True)
 @click.option('islist', '--list', is_flag=True)
-def set_(key, values, islist):
+@click.option('--prepare', is_flag=True)
+def set_(key, values, islist, prepare):
+    if prepare:
+        PreInstall()
     if len(values) > 1 or islist:
         value = list(values)
     else:
         value = values[0]
+    print(_('set {key}={value}').format(key=key, value=value))
     SetConfig(key, value)
 
 
@@ -89,7 +96,7 @@ def download(packages):
         elif not arch in soft['link']:
             print('warning: no link available')
     for soft in softs:
-        Download(soft['link'][arch], directory=GetConfig('download_dir'))
+        Download(soft['link'][arch])
 
 
 @cli.command()
@@ -119,8 +126,7 @@ def install(packages, download, outdated, dry_run):
                   filename='installed.json')
         if dry_run:
             return
-        file = Download(soft['link'][arch],
-                        directory=GetConfig('download_dir'))
+        file = Download(soft['link'][arch])
         command = str(file)+' '+soft['args']
         if download:
             if os.name == 'nt':
