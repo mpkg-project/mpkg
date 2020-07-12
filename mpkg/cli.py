@@ -10,7 +10,7 @@ import click
 
 from .common import Soft
 from .config import HOME, GetConfig, SetConfig
-from .load import GetSofts, Load
+from .load import GetSofts, Load, Names2Softs
 from .utils import Download, GetOutdated, Selected, ToLink
 
 _ = gettext.gettext
@@ -67,8 +67,29 @@ def config(force, load):
         SetConfig('sources', sources)
 
 
-def set_():
-    pass
+@cli.command('set')
+@click.argument('key')
+@click.argument('values', nargs=-1, required=True)
+@click.option('islist', '--list', is_flag=True)
+def set_(key, values, islist):
+    if len(values) > 1 or islist:
+        value = list(values)
+    else:
+        value = values[0]
+    SetConfig(key, value)
+
+
+@cli.command()
+@click.argument('packages', nargs=-1, required=True)
+def download(packages):
+    softs = Names2Softs(packages)
+    for soft in softs:
+        if not soft.get('link'):
+            soft['link'] = ToLink(soft['links'])
+        elif not arch in soft['link']:
+            print('warning: no link available')
+    for soft in softs:
+        Download(soft['link'][arch], directory=GetConfig('download_dir'))
 
 
 @cli.command()
@@ -77,19 +98,18 @@ def set_():
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('--dry-run', is_flag=True)
 def install(packages, download, outdated, dry_run):
-    packages = [pkg.lower() for pkg in packages]
-    softs_all = GetSofts()
     if packages:
-        softs = [x for x in softs_all if x['name'].lower() in packages]
+        softs = Names2Softs(packages)
     elif outdated:
-        softs = [x for x in softs_all if x['name']
-                 in list(GetOutdated().keys())]
+        softs = Names2Softs(list(GetOutdated().keys()))
     else:
         print(install.get_help(click.core.Context(install)))
         return
     for soft in softs:
         if not soft.get('link') and not dry_run:
             soft['link'] = ToLink(soft['links'])
+        elif not arch in soft['link']:
+            print('warning: no link available')
         if not soft.get('date'):
             soft['date'] = Soft.DefaultList
         if not soft.get('args'):
@@ -129,17 +149,15 @@ def remove(packages):
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('-i', '--installed', is_flag=True)
 def list_(packages, outdated, installed):
-    packages = [pkg.lower() for pkg in packages]
-    softs = GetSofts()
     if installed:
         pkgs = GetConfig(filename='installed.json')
         pprint(list(pkgs.keys()))
     elif outdated:
         pprint(list(GetOutdated().keys()))
     elif packages:
-        pprint([x for x in softs if x['name'].lower() in packages])
+        pprint(Names2Softs(packages))
     else:
-        pprint([x['name'] for x in softs])
+        pprint([x['name'] for x in GetSofts()])
 
 
 if __name__ == "__main__":

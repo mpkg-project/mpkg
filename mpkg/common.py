@@ -11,16 +11,16 @@ _ = gettext.gettext
 
 
 class Soft(object):
-    id = ''
     cfg = 'config.json'
+    api = 1
+    DefaultList, DefaultStr, DefaultDict = [], '', {}
     isMultiple = False
     allowExtract = False
     isPrepared = False
     needConfig = False
+    ID = ''
     SilentArgs = ''
-    DefaultList = []
-    DefaultStr = ''
-    DefaultDict = {}
+    Description = ''
 
     def __init__(self):
         self.rem = self.getconfig('rem')
@@ -30,7 +30,7 @@ class Soft(object):
         if name:
             self.name = name
         else:
-            self.name = self.id
+            self.name = self.ID
         self.ver,  self.links, self.link = self.DefaultStr, self.DefaultList, self.DefaultDict
         self.date, self.log = self.DefaultList, self.DefaultStr
 
@@ -38,17 +38,17 @@ class Soft(object):
         pass
 
     def config(self):
-        print(_('\n configuring {0} (press enter to pass)').format(self.id))
+        print(_('\n configuring {0} (press enter to pass)').format(self.ID))
         self.setconfig('name')
         self.setconfig('rem')
 
     def setconfig(self, key, value=False):
         if value == False:
             value = input(_('input {key}: '.format(key=key)))
-        SetConfig(key, value, path=self.id, filename=self.cfg)
+        SetConfig(key, value, path=self.ID, filename=self.cfg)
 
     def getconfig(self, key):
-        return GetConfig(key, path=self.id, filename=self.cfg)
+        return GetConfig(key, path=self.ID, filename=self.cfg)
 
     def json(self) -> bytes:
         if not self.isPrepared:
@@ -59,25 +59,28 @@ class Soft(object):
         self.isPrepared = True
         self._prepare()
         data = {}
-        data['id'] = self.id
+        data['id'] = self.ID
         data['ver'] = self.ver
-        if self.SilentArgs:
-            data['args'] = self.SilentArgs
         if self.links != self.DefaultList:
             data['links'] = self.links
         if self.link != self.DefaultDict:
             data['link'] = self.link
-        if self.isMultiple:
-            data['cfg'] = self.cfg
         if self.date != self.DefaultList:
             data['date'] = self.date
+        if self.name != self.ID:
+            data['name'] = self.name
+        if self.isMultiple:
+            data['cfg'] = self.cfg
+        if self.SilentArgs:
+            data['args'] = self.SilentArgs
         if self.rem:
             data['rem'] = self.rem
         if self.log:
             data['changelog'] = self.log
-        if self.name != self.id:
-            data['name'] = self.name
+        if self.Description:
+            data['description'] = self.Description
         self.data = {'packages': [data]}
+        self.data['api'] = self.api
 
 
 class Driver(Soft):

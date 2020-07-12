@@ -26,7 +26,7 @@ def Configurate(path: str):
     pkg = LoadFile(path)
     if pkg.isMultiple:
         i = int(
-            input(_('\ninput the number of profiles for {pkgname}: ').format(pkgname=pkg.id)))
+            input(_('\ninput the number of profiles for {pkgname}: ').format(pkgname=pkg.ID)))
         pkg.setconfig('i', i)
         for i in range(i):
             newpkg = LoadFile(path)
@@ -133,26 +133,32 @@ def Load(source: str, ver=-1, installed=True, sync=True):
 def HasConflict(softs, pkgs) -> list:
     ids = []
     for item in pkgs:
-        if item.isMultiple and item.id in ids:
+        if item.isMultiple and item.ID in ids:
             pass
         else:
-            ids.append(item.id)
+            ids.append(item.ID)
     [ids.append(item['id']) for item in softs]
     return [id for id in ids if ids.count(id) > 1]
 
 
 def Sorted(items):
     softs, pkgs, sources = [], [], []
-    a = [x for x, ext in items if ext == '.json']
-    b = [x for x, ext in items if ext == '.py']
-    c = [x for x, ext in items if ext == '.sources']
-    d = [x for x, ext in items if ext == '.zip']
+    a, b, c, d = [], [], [], []
+    for x, ext in items:
+        if ext == '.json':
+            a.append(x)
+        elif ext == '.py':
+            b.append(x)
+        elif ext == '.sources':
+            c.append(x)
+        elif ext == '.zip':
+            d.append(x)
     # a=[[soft1, soft2]]
     # b=[[pkg1, pkg2]]
     # c=[[(x1,ext),(x2,ext)]], x1=a/b/d[0]
     # d=[[(x1,ext),(x2,ext)]], x1=a/b[0]
-    for x in c:
-        sources += x
+    for L in c:
+        sources += L
     for x, ext in sources:
         if ext == '.json':
             a.append(x)
@@ -166,11 +172,11 @@ def Sorted(items):
                 a.append(y)
             elif ext == '.py':
                 b.append(y)
-    for soft in a:
-        softs += soft
-    for pkg in b:
-        pkgs += pkg
-    pkgs = [pkg for pkg in pkgs if pkg.id]
+    for softlist in a:
+        softs += softlist
+    for pkglist in b:
+        pkgs += pkglist
+    pkgs = [pkg for pkg in pkgs if pkg.ID]
     return softs, pkgs
 
 
@@ -198,3 +204,10 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
 
     Name(softs)
     return softs
+
+
+def Names2Softs(names: list, softs=False):
+    names = [name.lower() for name in names]
+    if not softs:
+        softs_all = GetSofts()
+    return [soft for soft in softs_all if soft['name'].lower() in names]
