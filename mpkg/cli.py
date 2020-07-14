@@ -12,7 +12,7 @@ import click
 from .common import Soft
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetSofts, Load, Names2Softs
-from .utils import Download, GetOutdated, PreInstall, Selected, ToLink
+from .utils import DownloadSofts, Extract, GetOutdated, PreInstall
 
 _ = gettext.gettext
 arch = architecture()[0]
@@ -43,6 +43,9 @@ def sync(jobs, sync):
                 print(f'{name}\t{value[1]}->{value[2]}')
             if soft.get('rem'):
                 print(f' rem: {soft["rem"]}')
+            rem = GetConfig(soft['name'], filename='rem.json')
+            if rem:
+                print(f' rem: {rem}')
             if soft.get('changelog'):
                 print(f' changelog: {soft["changelog"]}')
 
@@ -52,13 +55,13 @@ def sync(jobs, sync):
 @click.option('-f', '--force', is_flag=True)
 @click.option('--load/--no-load', default=True)
 @click.option('--delete-all', is_flag=True)
-@click.option('--re-redirect', is_flag=True)
-def config(packages, force, load, delete_all, re_redirect):
+@click.option('--url-redirect', is_flag=True)
+def config(packages, force, load, delete_all, url_redirect):
     if packages:
         for soft in Names2Softs(packages):
             ConfigSoft(soft)
         return
-    if re_redirect:
+    if url_redirect:
         rules = []
         while True:
             r = input(_('\n input pattern(press enter to pass): '))
@@ -70,7 +73,8 @@ def config(packages, force, load, delete_all, re_redirect):
     if not force and GetConfig('sources'):
         print(_('pass'))
     elif delete_all:
-        shutil.rmtree(HOME)
+        if HOME.exists():
+            shutil.rmtree(HOME)
     else:
         PreInstall()
         sources = []
@@ -89,38 +93,48 @@ def config(packages, force, load, delete_all, re_redirect):
 @click.argument('key')
 @click.argument('values', nargs=-1)
 @click.option('islist', '--list', is_flag=True)
-@click.option('--prepare', is_flag=True)
 @click.option('--add', is_flag=True)
 @click.option('--delete', is_flag=True)
 @click.option('--test', is_flag=True)
-def set_(key, values, islist, prepare, add, test, delete):
-    if prepare:
+@click.option('--filename')
+@click.option('--disable', is_flag=True)
+@click.option('--enable', is_flag=True)
+@click.option('--rem', is_flag=True)
+def set_(key, values, islist, add, test, delete, filename, disable, enable, rem):
+    if rem:
+        filename = 'rem.json'
+    if not GetConfig('sources'):
         PreInstall()
     if add:
         islist = True
-        values = GetConfig(key)+list(values)
+        values = GetConfig(key, filename=filename)+list(values)
     if len(values) > 1 or islist:
         value = list(values)
     elif len(values) == 1:
         value = values[0]
     else:
         value = ''
-    print('set {key}={value}'.format(key=key, value=value))
-    if not test:
-        SetConfig(key, value, delete=delete)
+    if not filename:
+        filename = 'config.json'
+    if disable:
+        SetConfig(key+'-disabled', GetConfig(key, filename=filename),
+                  filename=filename)
+        SetConfig(key, value, delete=True, filename=filename)
+    elif enable:
+        SetConfig(key, GetConfig(key+'-disabled',
+                                 filename=filename), filename=filename)
+        SetConfig(key+'-disabled', value, delete=True, filename=filename)
+    else:
+        print('set {key}={value}'.format(key=key, value=value))
+        if not test:
+            SetConfig(key, value, delete=delete, filename=filename)
 
 
 @cli.command()
 @click.argument('packages', nargs=-1, required=True)
 def download(packages):
     softs = Names2Softs(packages)
-    for soft in softs:
-        if not soft.get('link'):
-            soft['link'] = ToLink(soft['links'])
-        elif not arch in soft['link']:
-            print('warning: no link available')
-    for soft in softs:
-        Download(soft['link'][arch])
+    DownloadSofts(softs)
 
 
 @cli.command()
@@ -128,7 +142,8 @@ def download(packages):
 @click.option('-d', '--download', is_flag=True)
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('--dry-run', is_flag=True)
-def install(packages, download, outdated, dry_run):
+@click.option('--delete-file', is_flag=True)
+def install(packages, download, outdated, dry_run, delete_file):
     if packages:
         softs = Names2Softs(packages)
     elif outdated:
@@ -137,27 +152,59 @@ def install(packages, download, outdated, dry_run):
         print(install.get_help(click.core.Context(install)))
         return
     for soft in softs:
-        if not soft.get('link') and not dry_run:
-            soft['link'] = ToLink(soft['links'])
-        elif not arch in soft['link']:
-            print('warning: no link available')
         if not soft.get('date'):
             soft['date'] = Soft.DefaultList
         if not soft.get('args'):
             soft['args'] = Soft.SilentArgs
-    for soft in softs:
         SetConfig(soft['name'], [soft['ver'], soft['date']],
                   filename='installed.json')
-        if dry_run:
+    if not dry_run:
+        files = DownloadSofts(softs)[0]
+        for file in files:
+            command = str(file)+' '+soft['args']
+            if download:
+                if os.name == 'nt':
+                    script = file.parent / 'install.bat'
+                    os.system(f'echo {command} >> {script}')
+            else:
+                if os.name == 'nt':
+                    if str(file).endswith('.exe') or str(file).endswith('.msi'):
+                        os.system(command)
+                    else:
+                        print(f'warning: cannot install {str(file)}')
+                else:
+                    os.system(command)
+                if delete_file:
+                    file.unlink()
+
+
+@cli.command()
+@click.argument('packages', nargs=-1)
+@click.option('--set-root')
+@click.option('--with-ver', is_flag=True)
+@click.option('--install', is_flag=True)
+def extract(packages, install, set_root, with_ver):
+    if not packages:
+        pprint([soft['name']
+                for soft in GetSofts() if soft.get('allowExtract')])
+    else:
+        softs = Names2Softs(packages)
+        if install:
+            for soft in softs:
+                if not soft.get('date'):
+                    soft['date'] = Soft.DefaultList
+                SetConfig(soft['name'], [soft['ver'], soft['date']],
+                          filename='installed.json')
+        if set_root:
+            SetConfig(softs[0]['name'], set_root, filename='xroot.json')
             return
-        file = Download(soft['link'][arch])
-        command = str(file)+' '+soft['args']
-        if download:
-            if os.name == 'nt':
-                script = file.parent / 'install.bat'
-                os.system(f'echo {command} >> {script}')
-        else:
-            os.system(command)
+        files, softs = DownloadSofts(softs)
+        for i, file in enumerate(files):
+            root = GetConfig(softs[i]['name'], filename='xroot.json')
+            if with_ver:
+                Extract(file, root, ver=softs[i]['ver'])
+            else:
+                Extract(file, root)
 
 
 @cli.command()
@@ -187,7 +234,7 @@ def list_(packages, outdated, installed):
     elif packages:
         pprint(Names2Softs(packages))
     else:
-        pprint([x['name'] for x in GetSofts()])
+        pprint([soft['name'] for soft in GetSofts()])
 
 
 if __name__ == "__main__":

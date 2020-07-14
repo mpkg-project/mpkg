@@ -79,6 +79,8 @@ class Soft(object):
             data['changelog'] = self.log
         if self.Description:
             data['description'] = self.Description
+        if self.allowExtract:
+            data['allowExtract'] = True
         self.data = {'packages': [data]}
         self.data['api'] = self.api
 

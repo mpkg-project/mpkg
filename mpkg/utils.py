@@ -4,7 +4,9 @@
 import gettext
 import os
 import re
+import shutil
 import time
+from functools import lru_cache
 from pathlib import Path
 from platform import architecture
 
@@ -19,14 +21,16 @@ arch = architecture()[0]
 
 def Redirect(url: str) -> str:
     rules = GetConfig('redirect')
-    for rule in rules:
-        for pattern, to in rule.items():
-            m = re.match(pattern, url)
-            if m:
-                return to.format(*m.groups())
+    if rules:
+        for rule in rules:
+            for pattern, to in rule.items():
+                m = re.match(pattern, url)
+                if m:
+                    return to.format(*m.groups())
     return url
 
 
+@lru_cache
 def GetPage(url: str, warn=True, **kwargs) -> str:
     url = Redirect(url)
     res = requests.get(url, **kwargs)
@@ -155,7 +159,64 @@ def GetOutdated():
 
 def PreInstall():
     SetConfig('download_dir', str(HOME))
+    SetConfig(
+        '7z', r'"C:\Program Files\7-Zip\7z.exe" x {filepath} -o{root} -aoa > nul')
     for ext in ['py', 'json', 'zip']:
         directory = HOME / ext
         if not directory.exists():
             directory.mkdir(parents=True)
+
+
+def DownloadSofts(softs):
+    files, new = [], []
+    for soft in softs:
+        if not soft.get('link'):
+            soft['link'] = ToLink(soft['links'])
+    for soft in softs:
+        if not arch in soft['link']:
+            print(f'warning: {soft["name"]} has no link available')
+        else:
+            new.append(soft)
+            files.append(Download(soft['link'][arch]))
+    return files, new
+
+
+def ReplaceDir(root_src_dir, root_dst_dir):
+    # https://stackoverflow.com/q/7420617
+    for src_dir, _, files in os.walk(root_src_dir):
+        dst_dir = src_dir.replace(root_src_dir, root_dst_dir, 1)
+        if not os.path.exists(dst_dir):
+            os.makedirs(dst_dir)
+        for file_ in files:
+            src_file = os.path.join(src_dir, file_)
+            dst_file = os.path.join(dst_dir, file_)
+            if os.path.exists(dst_file):
+                os.remove(dst_file)
+            shutil.move(src_file, dst_dir)
+    if Path(root_src_dir).exists():
+        shutil.rmtree(root_src_dir)
+
+
+def Extract(filepath, root='', ver=''):
+    filepath = Path(filepath)
+    if not root:
+        root = filepath.parent.absolute() / '.'.join(
+            filepath.name.split('.')[:-1])
+    ver = '-' + ver if ver else ''
+    root = Path(str(root)+ver)
+    extract_dir = root.parent/'mpkg-temp-dir'
+    cmd = GetConfig('7z').format(filepath=str(filepath), root=extract_dir)
+    os.system(cmd)
+    files, root_new = os.listdir(extract_dir), extract_dir
+    while len(files) == 1:
+        root_new = root_new/files[0]
+        if root_new.is_dir():
+            files = os.listdir(root_new)
+        else:
+            root_new = root_new.parent
+            break
+    ReplaceDir(str(root_new.absolute()), str(root.absolute()))
+    print(_('extract {filepath} to {root}').format(
+        filepath=filepath, root=root))
+    if extract_dir.exists():
+        shutil.rmtree(extract_dir)
