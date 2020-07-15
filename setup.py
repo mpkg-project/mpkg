@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="mpkg",
-    version="0.0.4",
+    version="0.0.5",
     author="zpcc",
     author_email="zp.c@outlook.com",
     description="A simple package manager.",

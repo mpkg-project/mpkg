@@ -51,6 +51,14 @@ def sync(jobs, sync):
 
 
 @cli.command()
+@click.argument('pyfile')
+def test(pyfile):
+    for pkg in Load(pyfile)[0]:
+        pkg.prepare()
+        pprint(pkg.data)
+
+
+@cli.command()
 @click.argument('packages', nargs=-1)
 @click.option('-f', '--force', is_flag=True)
 @click.option('--load/--no-load', default=True)

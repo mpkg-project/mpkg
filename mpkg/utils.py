@@ -31,9 +31,12 @@ def Redirect(url: str) -> str:
 
 
 @lru_cache
-def GetPage(url: str, warn=True, **kwargs) -> str:
+def GetPage(url: str, warn=True, UA='') -> str:
     url = Redirect(url)
-    res = requests.get(url, **kwargs)
+    if UA:
+        res = requests.get(url, headers={'User-Agent': UA})
+    else:
+        res = requests.get(url)
     if warn and res.status_code != 200:
         print(f'warning: {url} {res.status_code}')
         return 'error'
