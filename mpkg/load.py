@@ -208,10 +208,10 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
     for soft in [pkg.data['packages'] for pkg in pkgs]:
         softs += soft
 
+    Name(softs)
     if not softs == softs_:
         SetConfig('softs', softs, filename='softs.json')
 
-    Name(softs)
     return softs
 
 

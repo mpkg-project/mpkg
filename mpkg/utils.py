@@ -74,7 +74,11 @@ def Download(url: str, directory='', filename='', output=True):
             print(r'  try mpkg set downloader "wget -q -O {filepath} {url}"')
         chunk_size = 4096
         contents = req.iter_content(chunk_size=chunk_size)
-        length = int(req.headers['content-length'])/chunk_size
+        if 'content-length' in req.headers:
+            length = int(req.headers['content-length'])/chunk_size
+        else:
+            print('warning: unknown content-length')
+            length = 0
         with click.progressbar(contents, length=length) as bar:
             with open(str(file), 'wb') as f:
                 for chunk in bar:
