@@ -5,12 +5,13 @@ import gettext
 import importlib
 import json
 import os
+import time
 from multiprocessing.dummy import Pool
 from pathlib import Path
 from zipfile import ZipFile
 
 from .config import HOME, GetConfig, SetConfig
-from .utils import Download, GetPage, Name
+from .utils import Download, GetPage, Name, ReplaceDir
 
 _ = gettext.gettext
 
@@ -90,14 +91,15 @@ def LoadZip(filepath, latest=False, installed=True):
         with ZipFile(filepath, 'r') as myzip:
             files = [name for name in myzip.namelist() if 'packages/' in name]
             myzip.extractall(path=str(dir), members=files)
-        if not pkgdir.exists():
-            (dir / files[0]).rename(str(pkgdir))
+        ReplaceDir(str(dir / files[0]), str(pkgdir))
     files = [str((pkgdir/file).absolute()) for file in os.listdir(pkgdir)
              if file.endswith('.py') or file.endswith('.json')]
     return [Load(file, installed=installed) for file in files]
 
 
 def Load(source: str, ver=-1, installed=True, sync=True):
+    if not source.endswith('.json') and not GetConfig('unsafe') == 'yes':
+        return [], '.json'
     if not installed:
         sync = True
     if source.endswith('.py'):
@@ -122,8 +124,12 @@ def Load(source: str, ver=-1, installed=True, sync=True):
     elif source.endswith('.zip'):
         filepath, latest = Save(source, ver, sync)
         return LoadZip(filepath, latest, installed), '.zip'
-    elif source.endswith('.sources') and source.startswith('http'):
-        sources = json.loads(GetPage(source))
+    elif source.endswith('.sources'):
+        if source.startswith('http'):
+            sources = json.loads(GetPage(source))
+        else:
+            with open(source, 'r', encoding="utf8") as f:
+                sources = json.load(f)
         with Pool(10) as p:
             score = [x for x in p.map(lambda x: Load(
                 x[0], x[1], installed, sync), sources.items()) if x]
@@ -213,6 +219,29 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
         SetConfig('softs', softs, filename='softs.json')
 
     return softs
+
+
+def GetOutdated():
+    installed = GetConfig(filename='installed.json')
+    latest = {}
+    for soft in GetSofts():
+        latest[soft['name']] = [soft['ver'], soft.get('date')]
+    outdated = {}
+    for name, value in installed.items():
+        if not name in latest:
+            print('warning: cannot find '+name)
+            continue
+        date = latest[name][1]
+        if date:
+            date = time.strftime(
+                '%y%m%d', time.strptime(date, '%Y-%m-%d'))
+        else:
+            date = ''
+        if value[0] != latest[name][0]:
+            outdated[name] = [date, value[0], latest[name][0]]
+        elif latest[name][1] and value[1] != latest[name][1]:
+            outdated[name] = [date, value[0], latest[name][0]]
+    return outdated
 
 
 def Names2Softs(names: list, softs=False):

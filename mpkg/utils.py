@@ -5,7 +5,6 @@ import gettext
 import os
 import re
 import shutil
-import time
 from functools import lru_cache
 from pathlib import Path
 from platform import architecture
@@ -31,14 +30,14 @@ def Redirect(url: str) -> str:
 
 
 @lru_cache
-def GetPage(url: str, warn=True, UA='') -> str:
+def GetPage(url: str, warn=True, UA='', timeout=3) -> str:
     url = Redirect(url)
     if UA:
-        res = requests.get(url, headers={'User-Agent': UA})
+        res = requests.get(url, headers={'User-Agent': UA}, timeout=timeout)
     else:
-        res = requests.get(url)
+        res = requests.get(url, timeout=timeout)
     if warn and res.status_code != 200:
-        print(f'warning: {url} {res.status_code}')
+        print(f'warning: {url} {res.status_code} error')
         return 'error'
     return res.text
 
@@ -68,10 +67,10 @@ def Download(url: str, directory='', filename='', output=True):
     else:
         req = requests.get(url, stream=True)
         if req.status_code != 200:
-            print(f'warning: {url} {req.status_code}')
+            print(f'warning: {req.status_code} error')
             print(' try to download it with downloader')
             print('  if you have installed wget')
-            print(r'  try mpkg set downloader "wget -q -O {filepath} {url}"')
+            print(r'  try: mpkg set downloader "wget -q -O {filepath} {url}"')
         chunk_size = 4096
         contents = req.iter_content(chunk_size=chunk_size)
         if 'content-length' in req.headers:
@@ -142,26 +141,6 @@ def Name(softs):
         names.append(soft['name'])
     if len(names) != len(set(names)):
         print(f'warning: name conflict\n{names}')
-
-
-def GetOutdated():
-    installed = GetConfig(filename='installed.json')
-    latest = {}
-    for soft in GetConfig('softs', filename='softs.json'):
-        latest[soft['name']] = [soft['ver'], soft.get('date')]
-    outdated = {}
-    for name, value in installed.items():
-        date = latest[name][1]
-        if date:
-            date = time.strftime(
-                '%y%m%d', time.strptime(date, '%Y-%m-%d'))
-        else:
-            date = ''
-        if value[0] != latest[name][0]:
-            outdated[name] = [date, value[0], latest[name][0]]
-        elif latest[name][1] and value[1] != latest[name][1]:
-            outdated[name] = [date, value[0], latest[name][0]]
-    return outdated
 
 
 def PreInstall():

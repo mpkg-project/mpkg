@@ -13,7 +13,6 @@ _ = gettext.gettext
 class Soft(object):
     cfg = 'config.json'
     api = 1
-    DefaultList, DefaultStr, DefaultDict = [], '', {}
     isMultiple = False
     allowExtract = False
     isPrepared = False
@@ -31,8 +30,8 @@ class Soft(object):
             self.name = name
         else:
             self.name = self.ID
-        self.ver,  self.links, self.link = self.DefaultStr, self.DefaultList, self.DefaultDict
-        self.date, self.log = self.DefaultList, self.DefaultStr
+        self.ver,  self.links, self.link = '', [], {}
+        self.date, self.log = [], ''
 
     def _prepare(self):
         pass
@@ -61,11 +60,11 @@ class Soft(object):
         data = {}
         data['id'] = self.ID
         data['ver'] = self.ver
-        if self.links != self.DefaultList:
+        if self.links:
             data['links'] = self.links
-        if self.link != self.DefaultDict:
+        if self.link:
             data['link'] = self.link
-        if self.date != self.DefaultList:
+        if self.date:
             data['date'] = self.date
         if self.name != self.ID:
             data['name'] = self.name

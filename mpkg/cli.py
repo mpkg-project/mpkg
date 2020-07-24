@@ -11,8 +11,8 @@ import click
 
 from .common import Soft
 from .config import HOME, GetConfig, SetConfig
-from .load import ConfigSoft, GetSofts, Load, Names2Softs
-from .utils import DownloadSofts, Extract, GetOutdated, PreInstall
+from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
+from .utils import DownloadSofts, Extract, PreInstall
 
 _ = gettext.gettext
 arch = architecture()[0]
@@ -111,19 +111,21 @@ def config(packages, force, load, delete_all, url_redirect):
 def set_(key, values, islist, add, test, delete, filename, disable, enable, rem):
     if rem:
         filename = 'rem.json'
+    if not filename:
+        filename = 'config.json'
     if not GetConfig('sources'):
         PreInstall()
     if add:
         islist = True
-        values = GetConfig(key, filename=filename)+list(values)
+        old = GetConfig(key, filename=filename)
+        old = old if old else []
+        values = old + list(values)
     if len(values) > 1 or islist:
         value = list(values)
     elif len(values) == 1:
         value = values[0]
     else:
         value = ''
-    if not filename:
-        filename = 'config.json'
     if disable:
         SetConfig(key+'-disabled', GetConfig(key, filename=filename),
                   filename=filename)
@@ -151,7 +153,8 @@ def download(packages):
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('--dry-run', is_flag=True)
 @click.option('--delete-file', is_flag=True)
-def install(packages, download, outdated, dry_run, delete_file):
+@click.option('--silent', is_flag=True)
+def install(packages, download, outdated, dry_run, delete_file, silent):
     if packages:
         softs = Names2Softs(packages)
     elif outdated:
@@ -161,21 +164,25 @@ def install(packages, download, outdated, dry_run, delete_file):
         return
     for soft in softs:
         if not soft.get('date'):
-            soft['date'] = Soft.DefaultList
+            soft['date'] = []
         if not soft.get('args'):
-            soft['args'] = Soft.SilentArgs
+            soft['args'] = ''
         SetConfig(soft['name'], [soft['ver'], soft['date']],
                   filename='installed.json')
     if not dry_run:
         files = DownloadSofts(softs)[0]
         for file in files:
-            command = str(file)+' '+soft['args']
+            if silent:
+                command = str(file)+' '+soft['args']
+            else:
+                command = str(file)
             if download:
                 if os.name == 'nt':
                     script = file.parent / 'install.bat'
                     os.system(f'echo {command} >> {script}')
             else:
                 if os.name == 'nt':
+                    print(_('\nInstalling...'))
                     if str(file).endswith('.exe') or str(file).endswith('.msi'):
                         os.system(command)
                     else:
@@ -200,7 +207,7 @@ def extract(packages, install, set_root, with_ver):
         if install:
             for soft in softs:
                 if not soft.get('date'):
-                    soft['date'] = Soft.DefaultList
+                    soft['date'] = []
                 SetConfig(soft['name'], [soft['ver'], soft['date']],
                           filename='installed.json')
         if set_root:
