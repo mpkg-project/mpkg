@@ -26,7 +26,8 @@ def cli():
 @cli.command()
 @click.option('-j', '--jobs', default=10, help=_('threads'))
 @click.option('--sync/--no-sync', default=True, help=_('sync source files'))
-def sync(jobs, sync):
+@click.option('-l', '--changelog', is_flag=True)
+def sync(jobs, sync, changelog):
     softs = GetSofts(jobs, sync, use_cache=False)
     names = [soft['name'] for soft in softs]
     outdated = sorted(list(GetOutdated().items()),
@@ -46,7 +47,7 @@ def sync(jobs, sync):
             rem = GetConfig(soft['name'], filename='rem.json')
             if rem:
                 print(f' rem: {rem}')
-            if soft.get('changelog'):
+            if changelog and soft.get('changelog'):
                 print(f' changelog: {soft["changelog"]}')
 
 

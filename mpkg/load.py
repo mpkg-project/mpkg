@@ -97,7 +97,7 @@ def LoadZip(filepath, latest=False, installed=True):
     return [Load(file, installed=installed) for file in files]
 
 
-def Load(source: str, ver=-1, installed=True, sync=True):
+def Load(source: str, ver=-1, installed=True, sync=True, jobs=10):
     if not source.endswith('.json') and not GetConfig('unsafe') == 'yes':
         return [], '.json'
     if not installed:
@@ -130,7 +130,11 @@ def Load(source: str, ver=-1, installed=True, sync=True):
         else:
             with open(source, 'r', encoding="utf8") as f:
                 sources = json.load(f)
-        with Pool(10) as p:
+        parser = [key for key, value in sources.items() if value == 'parser']
+        for url in parser:
+            del sources[url]
+            Load(url, installed=installed, sync=sync)
+        with Pool(jobs) as p:
             score = [x for x in p.map(lambda x: Load(
                 x[0], x[1], installed, sync), sources.items()) if x]
         return score, '.sources'
@@ -202,7 +206,7 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
 
     with Pool(jobs) as p:
         items = [x for x in p.map(lambda x:Load(
-            x, sync=sync), GetConfig('sources')) if x]
+            x, sync=sync, jobs=jobs), GetConfig('sources')) if x]
     softs, pkgs = Sorted(items)
 
     score = HasConflict(softs, pkgs)
