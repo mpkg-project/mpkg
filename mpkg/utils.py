@@ -30,8 +30,14 @@ def Redirect(url: str) -> str:
 
 
 @lru_cache
-def GetPage(url: str, warn=True, UA='', timeout=3) -> str:
+def GetPage(url: str, warn=True, UA='', timeout=0) -> str:
     url = Redirect(url)
+    if not timeout:
+        timeout = 3
+        if GetConfig('timeout'):
+            timeout = float(GetConfig('timeout'))
+    if GetConfig('debug') == 'yes':
+        print(f'debug: requesting {url}')
     if UA:
         res = requests.get(url, headers={'User-Agent': UA}, timeout=timeout)
     else:

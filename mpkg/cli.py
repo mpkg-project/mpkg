@@ -102,6 +102,7 @@ def config(packages, force, load, delete_all, url_redirect):
 @click.argument('key')
 @click.argument('values', nargs=-1)
 @click.option('islist', '--list', is_flag=True)
+@click.option('isdict', '--dict', is_flag=True)
 @click.option('--add', is_flag=True)
 @click.option('--delete', is_flag=True)
 @click.option('--test', is_flag=True)
@@ -109,13 +110,15 @@ def config(packages, force, load, delete_all, url_redirect):
 @click.option('--disable', is_flag=True)
 @click.option('--enable', is_flag=True)
 @click.option('--rem', is_flag=True)
-def set_(key, values, islist, add, test, delete, filename, disable, enable, rem):
+def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, rem):
     if rem:
         filename = 'rem.json'
     if not filename:
         filename = 'config.json'
     if not GetConfig('sources'):
         PreInstall()
+    if isdict:
+        values = [{values[0]: values[1]}]
     if add:
         islist = True
         old = GetConfig(key, filename=filename)
@@ -128,17 +131,21 @@ def set_(key, values, islist, add, test, delete, filename, disable, enable, rem)
     else:
         value = ''
     if disable:
-        SetConfig(key+'-disabled', GetConfig(key, filename=filename),
-                  filename=filename)
-        SetConfig(key, value, delete=True, filename=filename)
-    elif enable:
-        SetConfig(key, GetConfig(key+'-disabled',
-                                 filename=filename), filename=filename)
-        SetConfig(key+'-disabled', value, delete=True, filename=filename)
-    else:
-        print('set {key}={value}'.format(key=key, value=value))
+        value_ = GetConfig(key, filename=filename)
+        if not value_:
+            print(f'warning: cannot find {key}')
         if not test:
-            SetConfig(key, value, delete=delete, filename=filename)
+            SetConfig(key+'-disabled', value_, filename=filename)
+        delete = True
+    elif enable:
+        value = GetConfig(key+'-disabled', filename=filename)
+        if not value:
+            print(f'warning: cannot find {key}-disabled')
+        if not test:
+            SetConfig(key+'-disabled', delete=True, filename=filename)
+    print('set {key}={value}'.format(key=key, value=value))
+    if not test:
+        SetConfig(key, value, delete=delete, filename=filename)
 
 
 @cli.command()
@@ -183,11 +190,13 @@ def install(packages, download, outdated, dry_run, delete_file, silent):
                     os.system(f'echo {command} >> {script}')
             else:
                 if os.name == 'nt':
-                    print(_('\nInstalling...'))
-                    if str(file).endswith('.exe') or str(file).endswith('.msi'):
+                    file = str(file)
+                    name = file.split('/')[-1].split('\\')[-1]
+                    print(_('\nInstalling {name}').format(name=name))
+                    if name.endswith('.exe') or name.endswith('.msi'):
                         os.system(command)
                     else:
-                        print(f'warning: cannot install {str(file)}')
+                        print(f'warning: cannot install {name}')
                 else:
                     os.system(command)
                 if delete_file:

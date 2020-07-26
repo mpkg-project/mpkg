@@ -98,6 +98,8 @@ def LoadZip(filepath, latest=False, installed=True):
 
 
 def Load(source: str, ver=-1, installed=True, sync=True, jobs=10):
+    if GetConfig('debug') == 'yes':
+        print(f'debug: loading {source}')
     if not source.endswith('.json') and not GetConfig('unsafe') == 'yes':
         return [], '.json'
     if not installed:
@@ -199,6 +201,14 @@ def ConfigSoft(soft):
         pkg[0].config()
 
 
+def Prepare(pkg):
+    try:
+        pkg.prepare()
+    except Exception as err:
+        print(f'error({pkg.ID}): {err}')
+        return pkg
+
+
 def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
     softs_ = GetConfig('softs', filename='softs.json')
     if softs_ and use_cache:
@@ -214,8 +224,8 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
         print(f'warning(id conflict): {set(score)}')
 
     with Pool(jobs) as p:
-        p.map(lambda x: x.prepare(), pkgs)
-    for soft in [pkg.data['packages'] for pkg in pkgs]:
+        err = [result for result in p.map(Prepare, pkgs) if result]
+    for soft in [pkg.data['packages'] for pkg in pkgs if pkg not in err]:
         softs += soft
 
     Name(softs)
