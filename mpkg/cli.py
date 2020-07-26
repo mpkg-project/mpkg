@@ -161,8 +161,11 @@ def download(packages):
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('--dry-run', is_flag=True)
 @click.option('--delete-file', is_flag=True)
-@click.option('--silent', is_flag=True)
-def install(packages, download, outdated, dry_run, delete_file, silent):
+@click.option('-q', '--quiet', is_flag=True)
+@click.option('-qq', '--veryquiet', is_flag=True)
+def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet):
+    if veryquiet:
+        quiet = True
     if packages:
         softs = Names2Softs(packages)
     elif outdated:
@@ -178,9 +181,11 @@ def install(packages, download, outdated, dry_run, delete_file, silent):
         SetConfig(soft['name'], [soft['ver'], soft['date']],
                   filename='installed.json')
     if not dry_run:
-        files = DownloadSofts(softs)[0]
-        for file in files:
-            if silent:
+        files, softs = DownloadSofts(softs)
+        for i, file in enumerate(files):
+            soft = files[i]
+            filename = str(file).split('/')[-1].split('\\')[-1]
+            if quiet:
                 command = str(file)+' '+soft['args']
             else:
                 command = str(file)
@@ -190,13 +195,14 @@ def install(packages, download, outdated, dry_run, delete_file, silent):
                     os.system(f'echo {command} >> {script}')
             else:
                 if os.name == 'nt':
-                    file = str(file)
-                    name = file.split('/')[-1].split('\\')[-1]
-                    print(_('\nInstalling {name}').format(name=name))
-                    if name.endswith('.exe') or name.endswith('.msi'):
+                    if veryquiet and not soft['args']:
+                        print(_('skip {fn}').format(fn=filename))
+                        continue
+                    print(_('\nInstalling {fn}').format(fn=filename))
+                    if filename.endswith('.exe') or filename.endswith('.msi'):
                         os.system(command)
                     else:
-                        print(f'warning: cannot install {name}')
+                        print(f'warning: cannot install {filename}')
                 else:
                     os.system(command)
                 if delete_file:
