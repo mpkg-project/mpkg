@@ -20,6 +20,7 @@ class Soft(object):
     ID = ''
     SilentArgs = ''
     Description = ''
+    ValidExitCodes = []
 
     def __init__(self):
         self.rem = self.getconfig('rem')
@@ -80,6 +81,8 @@ class Soft(object):
             data['description'] = self.Description
         if self.allowExtract:
             data['allowExtract'] = True
+        if self.ValidExitCodes:
+            data['valid'] = self.ValidExitCodes
         self.data = {'packages': [data]}
         self.data['api'] = self.api
 

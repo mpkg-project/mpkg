@@ -49,6 +49,8 @@ def GetPage(url: str, warn=True, UA='', timeout=0) -> str:
 
 
 def Download(url: str, directory='', filename='', output=True):
+    if not url.startswith('http'):
+        return Path(url)
     url = Redirect(url)
     if not directory:
         directory = GetConfig('download_dir')

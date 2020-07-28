@@ -27,8 +27,9 @@ def cli():
 @click.option('-j', '--jobs', default=10, help=_('threads'))
 @click.option('--sync/--no-sync', default=True, help=_('sync source files'))
 @click.option('-l', '--changelog', is_flag=True)
-def sync(jobs, sync, changelog):
-    softs = GetSofts(jobs, sync, use_cache=False)
+@click.option('--use-cache', is_flag=True)
+def sync(jobs, sync, changelog, use_cache):
+    softs = GetSofts(jobs, sync, use_cache=use_cache)
     names = [soft['name'] for soft in softs]
     outdated = sorted(list(GetOutdated().items()),
                       key=lambda x: x[1][0], reverse=True)
@@ -171,7 +172,9 @@ def download(packages):
 @click.option('-q', '--quiet', is_flag=True)
 @click.option('-qq', '--veryquiet', is_flag=True)
 @click.option('--args')
-def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet, args):
+@click.option('--verify', is_flag=True)
+@click.option('--force-verify', is_flag=True)
+def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet, args, verify, force_verify):
     if veryquiet:
         quiet = True
     if packages:
@@ -190,9 +193,11 @@ def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet
         if tmp:
             soft['args'] = tmp
         if args:
+            quiet = True
             soft['args'] = args
-        SetConfig(soft['name'], [soft['ver'], soft['date']],
-                  filename='installed.json')
+        if not verify:
+            SetConfig(soft['name'], [soft['ver'], soft['date']],
+                      filename='installed.json')
     if not dry_run:
         files, softs = DownloadSofts(softs)
         for i, file in enumerate(files):
@@ -205,21 +210,36 @@ def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet
             if veryquiet and not soft['args']:
                 print(_('\nskip installing {name}').format(name=soft['name']))
                 continue
+            if force_verify and not soft['valid']:
+                print(_('\nskip installing {name}').format(name=soft['name']))
+                continue
             if download:
                 if os.name == 'nt':
                     script = file.parent / 'install.bat'
-                    if filename.endswith('.exe') or filename.endswith('.msi'):
+                    if filename.split['.'][-1] in ['exe', 'msi', 'bat']:
                         os.system(f'echo {command} >> {script}')
             else:
+                code = -1
                 if os.name == 'nt':
                     print(_('\ninstalling {name} using {command}').format(
                         name=soft['name'], command=command))
-                    if filename.endswith('.exe') or filename.endswith('.msi'):
-                        os.system(command)
+                    if filename.split['.'][-1] in ['exe', 'msi', 'bat']:
+                        code = os.system(command)
                     else:
                         print(f'warning: cannot install {filename}')
                 else:
-                    os.system(command)
+                    code = os.system(command)
+                if soft['valid']:
+                    if len(soft['valid']) > 2:
+                        valid = soft['valid']
+                    else:
+                        valid = range(soft['valid'][0], soft['valid'][1] + 1)
+                    if not code in valid:
+                        print(
+                            _('warning: wrong returncode {code}').format(code=code))
+                    elif verify:
+                        SetConfig(soft['name'], [soft['ver'],
+                                                 soft['date']], filename='installed.json')
                 if delete_file:
                     file.unlink()
 
@@ -274,13 +294,13 @@ def remove(packages):
 def list_(packages, outdated, installed):
     if installed:
         pkgs = GetConfig(filename='installed.json')
-        pprint(list(pkgs.keys()))
+        pprint(list(pkgs.keys()), compact=True)
     elif outdated:
-        pprint(list(GetOutdated().keys()))
+        pprint(list(GetOutdated().keys()), compact=True)
     elif packages:
-        pprint(Names2Softs(packages))
+        pprint(Names2Softs(packages), compact=True)
     else:
-        pprint([soft['name'] for soft in GetSofts()])
+        pprint([soft['name'] for soft in GetSofts()], compact=True)
 
 
 if __name__ == "__main__":
