@@ -53,7 +53,11 @@ def sync(jobs, sync, changelog):
 
 @cli.command()
 @click.argument('pyfile')
-def test(pyfile):
+@click.option('--config', is_flag=True)
+def load(pyfile, config):
+    if config:
+        Load(pyfile, installed=False)
+        return
     for pkg in Load(pyfile)[0]:
         pkg.prepare()
         pprint(pkg.data)
@@ -110,9 +114,12 @@ def config(packages, force, load, delete_all, url_redirect):
 @click.option('--disable', is_flag=True)
 @click.option('--enable', is_flag=True)
 @click.option('--rem', is_flag=True)
-def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, rem):
+@click.option('--args', is_flag=True)
+def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, rem, args):
     if rem:
         filename = 'rem.json'
+    if args:
+        filename = 'args.json'
     if not filename:
         filename = 'config.json'
     if not GetConfig('sources'):
@@ -163,7 +170,8 @@ def download(packages):
 @click.option('--delete-file', is_flag=True)
 @click.option('-q', '--quiet', is_flag=True)
 @click.option('-qq', '--veryquiet', is_flag=True)
-def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet):
+@click.option('--args')
+def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet, args):
     if veryquiet:
         quiet = True
     if packages:
@@ -178,27 +186,34 @@ def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet
             soft['date'] = []
         if not soft.get('args'):
             soft['args'] = ''
+        tmp = GetConfig(soft['name'], filename='args.json')
+        if tmp:
+            soft['args'] = tmp
+        if args:
+            soft['args'] = args
         SetConfig(soft['name'], [soft['ver'], soft['date']],
                   filename='installed.json')
     if not dry_run:
         files, softs = DownloadSofts(softs)
         for i, file in enumerate(files):
-            soft = files[i]
+            soft = softs[i]
             filename = str(file).split('/')[-1].split('\\')[-1]
             if quiet:
                 command = str(file)+' '+soft['args']
             else:
                 command = str(file)
+            if veryquiet and not soft['args']:
+                print(_('\nskip installing {name}').format(name=soft['name']))
+                continue
             if download:
                 if os.name == 'nt':
                     script = file.parent / 'install.bat'
-                    os.system(f'echo {command} >> {script}')
+                    if filename.endswith('.exe') or filename.endswith('.msi'):
+                        os.system(f'echo {command} >> {script}')
             else:
                 if os.name == 'nt':
-                    if veryquiet and not soft['args']:
-                        print(_('skip {fn}').format(fn=filename))
-                        continue
-                    print(_('\nInstalling {fn}').format(fn=filename))
+                    print(_('\ninstalling {name} using {command}').format(
+                        name=soft['name'], command=command))
                     if filename.endswith('.exe') or filename.endswith('.msi'):
                         os.system(command)
                     else:

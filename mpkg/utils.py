@@ -116,7 +116,7 @@ def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
 
 def ToLink(links: list):
     if len(links) != 1:
-        link = Selected(links, msg=_('select a link:'))[0]
+        link = Selected(links, msg=_('select a link to download:'))[0]
         return {arch: link}
     else:
         return {arch: links[0]}
