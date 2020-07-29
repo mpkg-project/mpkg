@@ -60,6 +60,9 @@ def Download(url: str, directory='', filename='', output=True):
     if not filename:
         filename = url.split('/')[-1]
     file = directory / filename
+    cached = file.parent / (file.name+'.cached')
+    if GetConfig('download_cache') == 'yes' and cached.exists():
+        return file
     if output:
         print(_('downloading {url}').format(url=url))
         print(_('saving to {path}').format(path=file))
@@ -153,10 +156,12 @@ def Name(softs):
 
 def PreInstall():
     SetConfig('download_dir', str(HOME))
+    SetConfig('bin_dir', str(HOME / 'bin'))
+    SetConfig('files_dir', str(HOME / 'files'))
     SetConfig(
         '7z', r'"C:\Program Files\7-Zip\7z.exe" x {filepath} -o{root} -aoa > nul')
-    for ext in ['py', 'json', 'zip']:
-        directory = HOME / ext
+    for folder in ['py', 'json', 'zip', 'bin', 'files']:
+        directory = HOME / folder
         if not directory.exists():
             directory.mkdir(parents=True)
 
@@ -214,3 +219,25 @@ def Extract(filepath, root='', ver=''):
         filepath=filepath, root=root))
     if extract_dir.exists():
         shutil.rmtree(extract_dir)
+    return root
+
+
+def InstallPortable(filepath, soft, delete):
+    if delete:
+        old = Path(GetConfig(soft['name'], filename='root_installed.json'))
+        if old.exists():
+            shutil.rmtree(old)
+    root = GetConfig(soft['name'], filename='root.json')
+    if not root:
+        name = '.'.join(filepath.name.split('.')[:-1])
+        root = Path(GetConfig('files_dir')) / name
+    root = Extract(filepath, root)
+    SetConfig(soft['name'], str(root), filename='root_installed.json')
+    bin = Path(GetConfig('bin_dir'))
+    for file in soft['bin']:
+        binfile = root / file
+        if binfile.exists() and binfile.is_file():
+            batfile = bin / (binfile.name.split('.')[0]+'.bat')
+            print(_('linking {0} => {1}').format(binfile, batfile))
+            os.system('echo @echo off>{0}'.format(batfile))
+            os.system('echo {0} %*>>{1}'.format(binfile, batfile))

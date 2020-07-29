@@ -12,7 +12,7 @@ import click
 from .common import Soft
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
-from .utils import DownloadSofts, Extract, PreInstall
+from .utils import DownloadSofts, Extract, InstallPortable, PreInstall
 
 _ = gettext.gettext
 arch = architecture()[0]
@@ -116,11 +116,14 @@ def config(packages, force, load, delete_all, url_redirect):
 @click.option('--enable', is_flag=True)
 @click.option('--rem', is_flag=True)
 @click.option('--args', is_flag=True)
-def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, rem, args):
+@click.option('--root', is_flag=True)
+def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, rem, args, root):
     if rem:
         filename = 'rem.json'
     if args:
         filename = 'args.json'
+    if root:
+        filename = 'root.json'
     if not filename:
         filename = 'config.json'
     if not GetConfig('sources'):
@@ -168,7 +171,7 @@ def download(packages):
 @click.option('-d', '--download', is_flag=True)
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('--dry-run', is_flag=True)
-@click.option('--delete-file', is_flag=True)
+@click.option('-del', '--delete-file', is_flag=True)
 @click.option('-q', '--quiet', is_flag=True)
 @click.option('-qq', '--veryquiet', is_flag=True)
 @click.option('--args')
@@ -202,7 +205,7 @@ def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet
         files, softs = DownloadSofts(softs)
         for i, file in enumerate(files):
             soft = softs[i]
-            filename = str(file).split('/')[-1].split('\\')[-1]
+            filename = file.name
             if quiet:
                 command = str(file)+' '+soft['args']
             else:
@@ -221,6 +224,14 @@ def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet
             else:
                 code = -1
                 if os.name == 'nt':
+                    if soft.get('bin'):
+                        if GetConfig('portable') == 'yes':
+                            InstallPortable(file, soft, delete_file)
+                        else:
+                            print(f'warning(portable): cannot install {filename}')
+                        if delete_file:
+                            file.unlink()
+                        continue
                     print(_('\ninstalling {name} using {command}').format(
                         name=soft['name'], command=command))
                     if filename.split['.'][-1] in ['exe', 'msi', 'bat']:

@@ -5,6 +5,7 @@ import gettext
 import importlib
 import json
 import os
+import shutil
 import time
 from multiprocessing.dummy import Pool
 from pathlib import Path
@@ -88,6 +89,8 @@ def LoadZip(filepath, latest=False, installed=True):
     dir = filepath.parent / filepath.name[:-4]
     pkgdir = dir / 'packages'
     if not latest:
+        if pkgdir.exists():
+            shutil.rmtree(pkgdir)
         with ZipFile(filepath, 'r') as myzip:
             files = [name for name in myzip.namelist() if 'packages/' in name]
             myzip.extractall(path=str(dir), members=files)

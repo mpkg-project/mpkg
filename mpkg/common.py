@@ -21,6 +21,7 @@ class Soft(object):
     SilentArgs = ''
     Description = ''
     ValidExitCodes = []
+    BIN = []
 
     def __init__(self):
         self.rem = self.getconfig('rem')
@@ -83,6 +84,8 @@ class Soft(object):
             data['allowExtract'] = True
         if self.ValidExitCodes:
             data['valid'] = self.ValidExitCodes
+        if self.BIN:
+            data['bin'] = self.BIN
         self.data = {'packages': [data]}
         self.data['api'] = self.api
 
