@@ -29,7 +29,7 @@ def Redirect(url: str) -> str:
     return url
 
 
-@lru_cache
+@lru_cache()
 def GetPage(url: str, warn=True, UA='', timeout=0) -> str:
     url = Redirect(url)
     if not timeout:

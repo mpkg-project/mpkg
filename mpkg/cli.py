@@ -171,13 +171,14 @@ def download(packages):
 @click.option('-d', '--download', is_flag=True)
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('--dry-run', is_flag=True)
-@click.option('-del', '--delete-file', is_flag=True)
+@click.option('-del', '--delete-tmp', is_flag=True)
+@click.option('--delete-files', is_flag=True)
 @click.option('-q', '--quiet', is_flag=True)
 @click.option('-qq', '--veryquiet', is_flag=True)
 @click.option('--args')
 @click.option('--verify', is_flag=True)
 @click.option('--force-verify', is_flag=True)
-def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet, args, verify, force_verify):
+def install(packages, download, outdated, dry_run, delete_tmp, delete_files, quiet, veryquiet, args, verify, force_verify):
     if veryquiet:
         quiet = True
     if packages:
@@ -226,10 +227,10 @@ def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet
                 if os.name == 'nt':
                     if soft.get('bin'):
                         if GetConfig('portable') == 'yes':
-                            InstallPortable(file, soft, delete_file)
+                            InstallPortable(file, soft, delete_files)
                         else:
-                            print(f'warning(portable): cannot install {filename}')
-                        if delete_file:
+                            print(f'warning: skip portable {filename}')
+                        if delete_tmp:
                             file.unlink()
                         continue
                     print(_('\ninstalling {name} using {command}').format(
@@ -251,7 +252,7 @@ def install(packages, download, outdated, dry_run, delete_file, quiet, veryquiet
                     elif verify:
                         SetConfig(soft['name'], [soft['ver'],
                                                  soft['date']], filename='installed.json')
-                if delete_file:
+                if delete_tmp:
                     file.unlink()
 
 

@@ -114,6 +114,8 @@ def Load(source: str, ver=-1, installed=True, sync=True, jobs=10):
             Configurate(filepath)
         if pkg.isMultiple:
             pkgs = []
+            if not pkg.getconfig('i'):
+                return [pkg], '.py'
             for i in range(pkg.getconfig('i')):
                 newpkg = LoadFile(filepath)
                 newpkg.cfg += f'.{i}'
@@ -207,6 +209,9 @@ def ConfigSoft(soft):
 def Prepare(pkg):
     try:
         pkg.prepare()
+        if not hasattr(pkg, 'data') or 'packages' not in pkg.data:
+            print(f'warning({pkg.ID}): no data')
+            return pkg
     except Exception as err:
         print(f'error({pkg.ID}): {err}')
         return pkg
