@@ -120,11 +120,11 @@ def config(packages, force, load, delete_all, url_redirect):
 def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, rem, args, root):
     if rem:
         filename = 'rem.json'
-    if args:
+    elif args:
         filename = 'args.json'
-    if root:
+    elif root:
         filename = 'root.json'
-    if not filename:
+    else:
         filename = 'config.json'
     if not GetConfig('sources'):
         PreInstall()
@@ -263,8 +263,8 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
 @click.option('--install', is_flag=True)
 def extract(packages, install, set_root, with_ver):
     if not packages:
-        pprint([soft['name']
-                for soft in GetSofts() if soft.get('allowExtract')])
+        pprint([soft['name'] for soft in GetSofts()
+                if soft.get('allowExtract') or soft.get('bin')], compact=True)
     else:
         softs = Names2Softs(packages)
         if install:

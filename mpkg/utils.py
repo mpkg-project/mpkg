@@ -155,11 +155,11 @@ def Name(softs):
 
 
 def PreInstall():
-    SetConfig('download_dir', str(HOME))
-    SetConfig('bin_dir', str(HOME / 'bin'))
-    SetConfig('files_dir', str(HOME / 'files'))
+    SetConfig('download_dir', str(HOME), replace=False)
+    SetConfig('bin_dir', str(HOME / 'bin'), replace=False)
+    SetConfig('files_dir', str(HOME / 'files'), replace=False)
     SetConfig(
-        '7z', r'"C:\Program Files\7-Zip\7z.exe" x {filepath} -o{root} -aoa > nul')
+        '7z', r'"C:\Program Files\7-Zip\7z.exe" x {filepath} -o{root} -aoa > nul', replace=False)
     for folder in ['py', 'json', 'zip', 'bin', 'files']:
         directory = HOME / folder
         if not directory.exists():
@@ -234,7 +234,7 @@ def InstallPortable(filepath, soft, delete):
     root = Extract(filepath, root)
     SetConfig(soft['name'], str(root), filename='root_installed.json')
     bin = Path(GetConfig('bin_dir'))
-    for file in soft['bin']:
+    for file in [file for file in soft['bin'] if file != 'PORTABLE']:
         binfile = root / file
         if binfile.exists() and binfile.is_file():
             batfile = bin / (binfile.name.split('.')[0]+'.bat')
