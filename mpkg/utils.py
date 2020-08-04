@@ -205,6 +205,8 @@ def Extract(filepath, root='', ver=''):
     root = Path(str(root)+ver)
     extract_dir = root.parent/'mpkg-temp-dir'
     cmd = GetConfig('7z').format(filepath=str(filepath), root=extract_dir)
+    print(_('extracting {filepath} to {root}').format(
+        filepath=filepath, root=root))
     os.system(cmd)
     files, root_new = os.listdir(extract_dir), extract_dir
     while len(files) == 1:
@@ -215,8 +217,6 @@ def Extract(filepath, root='', ver=''):
             root_new = root_new.parent
             break
     ReplaceDir(str(root_new.absolute()), str(root.absolute()))
-    print(_('extract {filepath} to {root}').format(
-        filepath=filepath, root=root))
     if extract_dir.exists():
         shutil.rmtree(extract_dir)
     return root
@@ -241,3 +241,33 @@ def InstallPortable(filepath, soft, delete):
             print(_('linking {0} => {1}').format(binfile, batfile))
             os.system('echo @echo off>{0}'.format(batfile))
             os.system('echo {0} %*>>{1}'.format(binfile, batfile))
+    return root
+
+
+def Search(url, regex, links='{ver}'):
+    page = GetPage(url)
+    ver = re.search(regex, page).groups()[0]
+    if isinstance(links, dict):
+        result = {}
+        for key, value in links.items():
+            result[key] = value.format(ver=ver)
+        return result
+    elif isinstance(links, list):
+        result = []
+        for item in links:
+            result.append(item.format(ver=ver))
+        return result
+    else:
+        return links.format(ver=ver)
+
+
+def Execute(string):
+    if not GetConfig('allow_cmd') == 'yes':
+        print(f'skip command({string})')
+        return
+    for cmd in string.strip().split('\n'):
+        print(f'executing {cmd}')
+        if GetConfig('skip_confirm') == 'yes' or click.confirm(' confirmed ?'):
+            code = os.system(cmd)
+            if code:
+                print(f'warning: returned {code}')

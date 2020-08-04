@@ -12,7 +12,7 @@ import click
 from .common import Soft
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
-from .utils import DownloadSofts, Extract, InstallPortable, PreInstall
+from .utils import DownloadSofts, Execute, Extract, InstallPortable, PreInstall
 
 _ = gettext.gettext
 arch = architecture()[0]
@@ -193,6 +193,8 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
             soft['date'] = []
         if not soft.get('args'):
             soft['args'] = ''
+        if not soft.get('cmd'):
+            soft['cmd'] = {}
         tmp = GetConfig(soft['name'], filename='args.json')
         if tmp:
             soft['args'] = tmp
@@ -224,10 +226,15 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
                         os.system(f'echo {command} >> {script}')
             else:
                 code = -1
+                if soft['cmd'].get('start'):
+                    Execute(soft['cmd']['start'].format(file=str(file)))
                 if os.name == 'nt':
                     if soft.get('bin'):
-                        if GetConfig('portable') == 'yes':
-                            InstallPortable(file, soft, delete_files)
+                        if GetConfig('allow_portable') == 'yes':
+                            root = InstallPortable(file, soft, delete_files)
+                            if soft['cmd'].get('end'):
+                                Execute(soft['cmd']['end'].format(
+                                    root=root, file=str(file)))
                         else:
                             print(f'warning: skip portable {filename}')
                         if delete_tmp:
@@ -241,6 +248,8 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
                         print(f'warning: cannot install {filename}')
                 else:
                     code = os.system(command)
+                if soft['cmd'].get('end'):
+                    Execute(soft['cmd']['end'].format(file=str(file)))
                 if soft['valid']:
                     if len(soft['valid']) > 2:
                         valid = soft['valid']
