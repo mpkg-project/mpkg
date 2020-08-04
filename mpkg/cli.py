@@ -4,18 +4,17 @@
 import gettext
 import os
 import shutil
-from platform import architecture
-from pprint import pformat, pprint
+from pprint import pprint
 
 import click
 
+from .app import App
 from .common import Soft
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
-from .utils import DownloadSofts, Execute, Extract, InstallPortable, PreInstall
+from .utils import DownloadSofts, Execute, Extract, PreInstall
 
 _ = gettext.gettext
-arch = architecture()[0]
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
@@ -55,13 +54,18 @@ def sync(jobs, sync, changelog, use_cache):
 @cli.command()
 @click.argument('pyfile')
 @click.option('--config', is_flag=True)
-def load(pyfile, config):
+@click.option('--install', is_flag=True)
+def load(pyfile, config, install):
     if config:
         Load(pyfile, installed=False)
         return
     for pkg in Load(pyfile)[0]:
         pkg.prepare()
-        pprint(pkg.data)
+        if install:
+            for soft in pkg.data['packages']:
+                App(soft).install()
+        else:
+            pprint(pkg.data)
 
 
 @cli.command()
@@ -188,81 +192,26 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
     else:
         print(install.get_help(click.core.Context(install)))
         return
-    for soft in softs:
-        if not soft.get('date'):
-            soft['date'] = []
-        if not soft.get('args'):
-            soft['args'] = ''
-        if not soft.get('cmd'):
-            soft['cmd'] = {}
-        tmp = GetConfig(soft['name'], filename='args.json')
-        if tmp:
-            soft['args'] = tmp
-        if args:
-            quiet = True
-            soft['args'] = args
-        if not verify:
-            SetConfig(soft['name'], [soft['ver'], soft['date']],
-                      filename='installed.json')
-    if not dry_run:
-        files, softs = DownloadSofts(softs)
-        for i, file in enumerate(files):
-            soft = softs[i]
-            filename = file.name
-            if quiet:
-                command = str(file)+' '+soft['args']
-            else:
-                command = str(file)
-            if veryquiet and not soft['args']:
-                print(_('\nskip installing {name}').format(name=soft['name']))
-                continue
-            if force_verify and not soft['valid']:
-                print(_('\nskip installing {name}').format(name=soft['name']))
-                continue
+    apps = [App(soft) for soft in softs]
+    if dry_run:
+        for app in apps:
+            app.dry_run()
+    else:
+        for app in apps:
+            app.download_prepare()
+        for app in apps:
+            app.download()
+        for app in apps:
+            app.install_prepare(args, quiet)
             if download:
-                if os.name == 'nt':
-                    script = file.parent / 'install.bat'
-                    if filename.split['.'][-1] in ['exe', 'msi', 'bat']:
-                        os.system(f'echo {command} >> {script}')
+                if app.file:
+                    app.dry_run()
+                    if os.name == 'nt':
+                        script = app.file.parent / 'install.bat'
+                        os.system(f'echo {app.command} >> {script}')
             else:
-                code = -1
-                if soft['cmd'].get('start'):
-                    Execute(soft['cmd']['start'].format(file=str(file)))
-                if os.name == 'nt':
-                    if soft.get('bin'):
-                        if GetConfig('allow_portable') == 'yes':
-                            root = InstallPortable(file, soft, delete_files)
-                            if soft['cmd'].get('end'):
-                                Execute(soft['cmd']['end'].format(
-                                    root=root, file=str(file)))
-                        else:
-                            print(f'warning: skip portable {filename}')
-                        if delete_tmp:
-                            file.unlink()
-                        continue
-                    print(_('\ninstalling {name} using {command}').format(
-                        name=soft['name'], command=command))
-                    if filename.split['.'][-1] in ['exe', 'msi', 'bat']:
-                        code = os.system(command)
-                    else:
-                        print(f'warning: cannot install {filename}')
-                else:
-                    code = os.system(command)
-                if soft['cmd'].get('end'):
-                    Execute(soft['cmd']['end'].format(file=str(file)))
-                if soft['valid']:
-                    if len(soft['valid']) > 2:
-                        valid = soft['valid']
-                    else:
-                        valid = range(soft['valid'][0], soft['valid'][1] + 1)
-                    if not code in valid:
-                        print(
-                            _('warning: wrong returncode {code}').format(code=code))
-                    elif verify:
-                        SetConfig(soft['name'], [soft['ver'],
-                                                 soft['date']], filename='installed.json')
-                if delete_tmp:
-                    file.unlink()
+                app.install(veryquiet, verify, force_verify,
+                            delete_tmp, delete_files)
 
 
 @cli.command()
@@ -272,8 +221,8 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
 @click.option('--install', is_flag=True)
 def extract(packages, install, set_root, with_ver):
     if not packages:
-        pprint([soft['name'] for soft in GetSofts()
-                if soft.get('allowExtract') or soft.get('bin')], compact=True)
+        pprint(sorted([soft['name'] for soft in GetSofts()
+                       if soft.get('allowExtract') or soft.get('bin')]), compact=True)
     else:
         softs = Names2Softs(packages)
         if install:
@@ -315,13 +264,13 @@ def remove(packages):
 def list_(packages, outdated, installed):
     if installed:
         pkgs = GetConfig(filename='installed.json')
-        pprint(list(pkgs.keys()), compact=True)
+        pprint(sorted(list(pkgs.keys())), compact=True)
     elif outdated:
-        pprint(list(GetOutdated().keys()), compact=True)
+        pprint(sorted(list(GetOutdated().keys())), compact=True)
     elif packages:
-        pprint(Names2Softs(packages), compact=True)
+        pprint(sorted(Names2Softs(packages)), compact=True)
     else:
-        pprint([soft['name'] for soft in GetSofts()], compact=True)
+        pprint(sorted([soft['name'] for soft in GetSofts()]), compact=True)
 
 
 if __name__ == "__main__":

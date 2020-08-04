@@ -244,9 +244,10 @@ def InstallPortable(filepath, soft, delete):
     return root
 
 
-def Search(url, regex, links='{ver}'):
-    page = GetPage(url)
-    ver = re.search(regex, page).groups()[0]
+def Search(url, regex, links='{ver}', ver=''):
+    if not ver:
+        page = GetPage(url)
+        ver = re.search(regex, page).groups()[0]
     if isinstance(links, dict):
         result = {}
         for key, value in links.items():

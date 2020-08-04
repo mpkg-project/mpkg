@@ -5,7 +5,6 @@ import gettext
 import json
 
 from .config import GetConfig, SetConfig
-from .utils import Download, Selected, ToLink
 
 _ = gettext.gettext
 
