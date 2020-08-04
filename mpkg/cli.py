@@ -3,16 +3,15 @@
 
 import gettext
 import os
-import shutil
 from pprint import pprint
+from shutil import rmtree
 
 import click
 
 from .app import App
-from .common import Soft
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
-from .utils import DownloadSofts, Execute, Extract, PreInstall
+from .utils import DownloadApps, PreInstall
 
 _ = gettext.gettext
 
@@ -92,7 +91,7 @@ def config(packages, force, load, delete_all, url_redirect):
         print(_('pass'))
     elif delete_all:
         if HOME.exists():
-            shutil.rmtree(HOME)
+            rmtree(HOME)
     else:
         PreInstall()
         sources = []
@@ -165,9 +164,13 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
 
 @cli.command()
 @click.argument('packages', nargs=-1, required=True)
-def download(packages):
-    softs = Names2Softs(packages)
-    DownloadSofts(softs)
+@click.option('--install', is_flag=True)
+def download(packages, install):
+    apps = [App(soft) for soft in Names2Softs(packages)]
+    DownloadApps(apps)
+    for app in apps:
+        if install:
+            app.dry_run()
 
 
 @cli.command()
@@ -197,10 +200,7 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
         for app in apps:
             app.dry_run()
     else:
-        for app in apps:
-            app.download_prepare()
-        for app in apps:
-            app.download()
+        DownloadApps(apps)
         for app in apps:
             app.install_prepare(args, quiet)
             if download:
@@ -225,22 +225,15 @@ def extract(packages, install, set_root, with_ver):
                        if soft.get('allowExtract') or soft.get('bin')]), compact=True)
     else:
         softs = Names2Softs(packages)
-        if install:
-            for soft in softs:
-                if not soft.get('date'):
-                    soft['date'] = []
-                SetConfig(soft['name'], [soft['ver'], soft['date']],
-                          filename='installed.json')
         if set_root:
             SetConfig(softs[0]['name'], set_root, filename='xroot.json')
             return
-        files, softs = DownloadSofts(softs)
-        for i, file in enumerate(files):
-            root = GetConfig(softs[i]['name'], filename='xroot.json')
-            if with_ver:
-                Extract(file, root, ver=softs[i]['ver'])
-            else:
-                Extract(file, root)
+        apps = [App(soft) for soft in softs]
+        DownloadApps(apps)
+        for app in apps:
+            if install:
+                app.dry_run()
+            app.extract(with_ver)
 
 
 @cli.command()

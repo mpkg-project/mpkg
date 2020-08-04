@@ -7,7 +7,6 @@ import re
 import shutil
 from functools import lru_cache
 from pathlib import Path
-from platform import architecture
 
 import click
 import requests
@@ -15,7 +14,6 @@ import requests
 from .config import HOME, GetConfig, SetConfig
 
 _ = gettext.gettext
-arch = architecture()[0]
 
 
 def Redirect(url: str) -> str:
@@ -119,14 +117,6 @@ def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
     return cfg
 
 
-def ToLink(links: list):
-    if len(links) != 1:
-        link = Selected(links, msg=_('select a link to download:'))[0]
-        return {arch: link}
-    else:
-        return {arch: links[0]}
-
-
 def Name(softs):
     names, ids = [], []
     multiple, named = [], []
@@ -166,18 +156,11 @@ def PreInstall():
             directory.mkdir(parents=True)
 
 
-def DownloadSofts(softs):
-    files, new = [], []
-    for soft in softs:
-        if not soft.get('link'):
-            soft['link'] = ToLink(soft['links'])
-    for soft in softs:
-        if not arch in soft['link']:
-            print(f'warning: {soft["name"]} has no link available')
-        else:
-            new.append(soft)
-            files.append(Download(soft['link'][arch]))
-    return files, new
+def DownloadApps(apps):
+    for app in apps:
+        app.download_prepare()
+    for app in apps:
+        app.download()
 
 
 def ReplaceDir(root_src_dir, root_dst_dir):
@@ -222,29 +205,7 @@ def Extract(filepath, root='', ver=''):
     return root
 
 
-def InstallPortable(filepath, soft, delete):
-    if delete:
-        old = Path(GetConfig(soft['name'], filename='root_installed.json'))
-        if old.exists():
-            shutil.rmtree(old)
-    root = GetConfig(soft['name'], filename='root.json')
-    if not root:
-        name = '.'.join(filepath.name.split('.')[:-1])
-        root = Path(GetConfig('files_dir')) / name
-    root = Extract(filepath, root)
-    SetConfig(soft['name'], str(root), filename='root_installed.json')
-    bin = Path(GetConfig('bin_dir'))
-    for file in [file for file in soft['bin'] if file != 'PORTABLE']:
-        binfile = root / file
-        if binfile.exists() and binfile.is_file():
-            batfile = bin / (binfile.name.split('.')[0]+'.bat')
-            print(_('linking {0} => {1}').format(binfile, batfile))
-            os.system('echo @echo off>{0}'.format(batfile))
-            os.system('echo {0} %*>>{1}'.format(binfile, batfile))
-    return root
-
-
-def Search(url, regex, links='{ver}', ver=''):
+def Search(url='', regex='', links='{ver}', ver=''):
     if not ver:
         page = GetPage(url)
         ver = re.search(regex, page).groups()[0]
@@ -260,15 +221,3 @@ def Search(url, regex, links='{ver}', ver=''):
         return result
     else:
         return links.format(ver=ver)
-
-
-def Execute(string):
-    if not GetConfig('allow_cmd') == 'yes':
-        print(f'skip command({string})')
-        return
-    for cmd in string.strip().split('\n'):
-        print(f'executing {cmd}')
-        if GetConfig('skip_confirm') == 'yes' or click.confirm(' confirmed ?'):
-            code = os.system(cmd)
-            if code:
-                print(f'warning: returned {code}')

@@ -3,13 +3,59 @@
 
 import gettext
 import os
+from pathlib import Path
 from platform import architecture
+from shutil import rmtree
+
+import click
 
 from .config import GetConfig, SetConfig
-from .utils import Download, Execute, InstallPortable, ToLink
+from .utils import Download, Extract, Selected
 
 _ = gettext.gettext
 arch = architecture()[0]
+
+
+def ToLink(links: list):
+    if len(links) != 1:
+        link = Selected(links, msg=_('select a link to download:'))[0]
+        return {arch: link}
+    else:
+        return {arch: links[0]}
+
+
+def Execute(string):
+    if not GetConfig('allow_cmd') == 'yes':
+        print(f'skip command({string})')
+        return
+    for cmd in string.strip().split('\n'):
+        print(f'executing {cmd}')
+        if GetConfig('skip_confirm') == 'yes' or click.confirm(' confirmed ?'):
+            code = os.system(cmd)
+            if code:
+                print(f'warning: returned {code}')
+
+
+def InstallPortable(filepath, soft, delete):
+    if delete:
+        old = Path(GetConfig(soft['name'], filename='root_installed.json'))
+        if old.exists():
+            rmtree(old)
+    root = GetConfig(soft['name'], filename='root.json')
+    if not root:
+        name = '.'.join(filepath.name.split('.')[:-1])
+        root = Path(GetConfig('files_dir')) / name
+    root = Extract(filepath, root)
+    SetConfig(soft['name'], str(root), filename='root_installed.json')
+    bin = Path(GetConfig('bin_dir'))
+    for file in [file for file in soft['bin'] if file != 'PORTABLE']:
+        binfile = root / file
+        if binfile.exists() and binfile.is_file():
+            batfile = bin / (binfile.name.split('.')[0]+'.bat')
+            print(_('linking {0} => {1}').format(binfile, batfile))
+            os.system('echo @echo off>{0}'.format(batfile))
+            os.system('echo {0} %*>>{1}'.format(binfile, batfile))
+    return root
 
 
 class App(object):
@@ -22,6 +68,8 @@ class App(object):
             data['args'] = ''
         if not data.get('cmd'):
             data['cmd'] = {}
+        if not data.get('valid'):
+            data['valid'] = {}
         self.data = data
 
     def dry_run(self):
@@ -69,7 +117,7 @@ class App(object):
         if veryquiet and not soft['args']:
             print(_('\nskip installing {name}').format(name=soft['name']))
             return
-        if force_verify and not soft.get('valid'):
+        if force_verify and not soft['valid']:
             print(_('\nskip installing {name}').format(name=soft['name']))
             return
         code = -1
@@ -95,7 +143,7 @@ class App(object):
                 Execute(soft['cmd']['end'].format(file=str(file)))
             self.dry_run()
             passed = False
-            if soft.get('valid'):
+            if soft['valid']:
                 if len(soft['valid']) > 2:
                     valid = soft['valid']
                 else:
@@ -110,5 +158,9 @@ class App(object):
         if delete_tmp:
             file.unlink()
 
-    def extract(self):
-        pass
+    def extract(self, with_ver=False):
+        root = GetConfig(self.data['name'], filename='xroot.json')
+        if with_ver:
+            Extract(self.file, root, ver=self.data['ver'])
+        else:
+            Extract(self.file, root)

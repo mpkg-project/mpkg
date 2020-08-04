@@ -5,10 +5,10 @@ import gettext
 import importlib
 import json
 import os
-import shutil
 import time
 from multiprocessing.dummy import Pool
 from pathlib import Path
+from shutil import rmtree
 from zipfile import ZipFile
 
 from .config import HOME, GetConfig, SetConfig
@@ -90,7 +90,7 @@ def LoadZip(filepath, latest=False, installed=True):
     pkgdir = dir / 'packages'
     if not latest:
         if pkgdir.exists():
-            shutil.rmtree(pkgdir)
+            rmtree(pkgdir)
         with ZipFile(filepath, 'r') as myzip:
             files = [name for name in myzip.namelist() if 'packages/' in name]
             myzip.extractall(path=str(dir), members=files)
