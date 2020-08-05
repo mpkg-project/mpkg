@@ -14,6 +14,8 @@ import requests
 from .config import HOME, GetConfig, SetConfig
 
 _ = gettext.gettext
+proxy = GetConfig('proxy')
+proxies = {'http': proxy, 'https': proxy} if proxy else {}
 
 
 def Redirect(url: str) -> str:
@@ -37,9 +39,10 @@ def GetPage(url: str, warn=True, UA='', timeout=0) -> str:
     if GetConfig('debug') == 'yes':
         print(f'debug: requesting {url}')
     if UA:
-        res = requests.get(url, headers={'User-Agent': UA}, timeout=timeout)
+        res = requests.get(
+            url, headers={'User-Agent': UA}, timeout=timeout, proxies=proxies)
     else:
-        res = requests.get(url, timeout=timeout)
+        res = requests.get(url, timeout=timeout, proxies=proxies)
     if warn and res.status_code != 200:
         print(f'warning: {url} {res.status_code} error')
         return 'error'
@@ -74,7 +77,7 @@ def Download(url: str, directory='', filename='', output=True):
                 url=url, directory=directory, filename=filename)
         os.system(command)
     else:
-        req = requests.get(url, stream=True)
+        req = requests.get(url, stream=True, proxies=proxies)
         if req.status_code != 200:
             print(f'warning: {req.status_code} error')
             print(' try to download it with downloader')
@@ -205,10 +208,11 @@ def Extract(filepath, root='', ver=''):
     return root
 
 
-def Search(url='', regex='', links='{ver}', ver=''):
+def Search(url='', regex='', links='{ver}', ver='', reverse=False):
     if not ver:
         page = GetPage(url)
-        ver = re.search(regex, page).groups()[0]
+        i = -1 if reverse else 0
+        ver = re.findall(regex, page)[i]
     if isinstance(links, dict):
         result = {}
         for key, value in links.items():

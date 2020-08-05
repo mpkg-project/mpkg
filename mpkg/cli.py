@@ -186,6 +186,7 @@ def download(packages, install):
 @click.option('--verify', is_flag=True)
 @click.option('--force-verify', is_flag=True)
 def install(packages, download, outdated, dry_run, delete_tmp, delete_files, quiet, veryquiet, args, verify, force_verify):
+    print('By installing you accept licenses for the packages.\n')
     if veryquiet:
         quiet = True
     if packages:

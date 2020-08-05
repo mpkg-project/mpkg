@@ -17,7 +17,9 @@ arch = architecture()[0]
 
 
 def ToLink(links: list):
-    if len(links) != 1:
+    if not links:
+        return {}
+    elif len(links) > 1:
         link = Selected(links, msg=_('select a link to download:'))[0]
         return {arch: link}
     else:
@@ -43,11 +45,13 @@ def InstallPortable(filepath, soft, delete):
             rmtree(old)
     root = GetConfig(soft['name'], filename='root.json')
     if not root:
-        name = '.'.join(filepath.name.split('.')[:-1])
+        name = soft['name']
         root = Path(GetConfig('files_dir')) / name
     root = Extract(filepath, root)
     SetConfig(soft['name'], str(root), filename='root_installed.json')
     bin = Path(GetConfig('bin_dir'))
+    if isinstance(soft['bin'], dict):
+        soft['bin'] = soft['bin'][arch]
     for file in [file for file in soft['bin'] if file != 'PORTABLE']:
         binfile = root / file
         if binfile.exists() and binfile.is_file():
@@ -129,13 +133,10 @@ class App(object):
                 if soft['cmd'].get('end'):
                     Execute(soft['cmd']['end'].format(
                         root=root, file=str(file)))
+                self.dry_run()
             else:
                 print(f'warning: skip portable {filename}')
         else:
-            if os.name == 'nt':
-                if not file.name.split('.')[-1] in ['exe', 'msi', 'bat', 'vbs']:
-                    print(f'warning: cannot install {file.name}')
-                    return
             print(_('\ninstalling {name} using {command}').format(
                 name=soft['name'], command=command))
             code = os.system(command)
