@@ -33,7 +33,7 @@ class Soft(object):
             self.name = name
         else:
             self.name = self.ID
-        self.ver,  self.links, self.link = '', [], {}
+        self.ver,  self.links, self.link, self.sha256 = '', [], {}, {}
         self.date, self.log = [], ''
 
     def _prepare(self):
@@ -91,6 +91,8 @@ class Soft(object):
             data['cmd'] = self.CMD
         if self.Depends:
             data['depends'] = self.Depends
+        if self.sha256:
+            data['sha256'] = self.sha256
         self.data = {'packages': [data]}
         self.data['api'] = self.api
 

@@ -136,7 +136,7 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
     if not GetConfig('sources'):
         PreInstall()
     if isdict:
-        values = [{values[0]: values[1]}]
+        values = [{values[i]: values[i+1]} for i in range(0, len(values), 2)]
     if add:
         islist = True
         old = GetConfig(key, filename=filename)

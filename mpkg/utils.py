@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import gettext
+import hashlib
 import os
 import re
 import shutil
@@ -16,6 +17,17 @@ from .config import HOME, GetConfig, SetConfig
 _ = gettext.gettext
 proxy = GetConfig('proxy')
 proxies = {'http': proxy, 'https': proxy} if proxy else {}
+
+
+def Sha256(filepath):
+    h = hashlib.sha256()
+    blocksize = 2**20
+    with open(filepath, 'rb') as f:
+        data = f.read(blocksize)
+        while data:
+            h.update(data)
+            data = f.read(blocksize)
+        return h.hexdigest()
 
 
 def Redirect(url: str) -> str:
@@ -48,7 +60,7 @@ def GetPage(url: str, warn=True, UA='', timeout=0) -> str:
     return res.text
 
 
-def Download(url: str, directory='', filename='', output=True):
+def Download(url: str, directory='', filename='', output=True, UA='', sha256=''):
     if not url.startswith('http'):
         return Path(url)
     url = Redirect(url)
@@ -76,20 +88,28 @@ def Download(url: str, directory='', filename='', output=True):
                 url=url, directory=directory, filename=filename)
         os.system(command)
     else:
-        req = requests.get(url, stream=True, proxies=proxies)
+        req = requests.get(url, stream=True, proxies=proxies,
+                           headers={'User-Agent': UA})
         if req.status_code != 200:
             print(f'warning: {req.status_code} error')
             print(' try to download it with downloader')
             print('  if you have installed wget')
             print(r'  try: mpkg set downloader "wget -q -O {filepath} {url}"')
-        chunk_size = 4096
+        chunk_size = 2**20
         contents = req.iter_content(chunk_size=chunk_size)
         if 'content-length' in req.headers:
             length = int(req.headers['content-length'])/chunk_size
         else:
             print('warning: unknown content-length')
             length = 0
-        with click.progressbar(contents, length=length) as bar:
+        if not length < 1:
+            if length > 1024:
+                label = str(round(length/1024, 1))+'GB'
+            else:
+                label = str(round(length, 1))+'MB'
+        else:
+            label = ''
+        with click.progressbar(contents, length=length, label=label) as bar:
             with open(str(file), 'wb') as f:
                 for chunk in bar:
                     if chunk:
@@ -97,6 +117,10 @@ def Download(url: str, directory='', filename='', output=True):
     if not file.is_file():
         print(f'warning: no {file}')
         print(f'command: {command}')
+    if sha256:
+        print(_('checking sha256'))
+        if sha256.lower() != Sha256(file):
+            print(f'warning: wrong sha256')
     return file
 
 

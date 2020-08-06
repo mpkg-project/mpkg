@@ -89,15 +89,17 @@ class App(object):
 
     def download(self):
         self.download_prepare()
+        data = self.data
         if self.apps:
             for app in self.apps:
                 app.download()
-        if not arch in self.data['link']:
+        if not arch in data['link']:
             if not self.apps:
-                print(f'warning: {self.data["name"]} has no link available')
+                print(f'warning: {data["name"]} has no link available')
             file = ''
         else:
-            file = Download(self.data['link'][arch])
+            sha256 = data['sha256'].get(arch) if data.get('sha256') else ''
+            file = Download(data['link'][arch], sha256=sha256)
         self.file = file
 
     def install_prepare(self, args='', quiet=False):
