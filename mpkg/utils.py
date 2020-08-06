@@ -38,11 +38,10 @@ def GetPage(url: str, warn=True, UA='', timeout=0) -> str:
             timeout = float(GetConfig('timeout'))
     if GetConfig('debug') == 'yes':
         print(f'debug: requesting {url}')
-    if UA:
-        res = requests.get(
-            url, headers={'User-Agent': UA}, timeout=timeout, proxies=proxies)
-    else:
-        res = requests.get(url, timeout=timeout, proxies=proxies)
+    if not UA:
+        UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 mpkg/1'
+    res = requests.get(
+        url, headers={'User-Agent': UA}, timeout=timeout, proxies=proxies)
     if warn and res.status_code != 200:
         print(f'warning: {url} {res.status_code} error')
         return 'error'
@@ -208,9 +207,9 @@ def Extract(filepath, root='', ver=''):
     return root
 
 
-def Search(url='', regex='', links='{ver}', ver='', reverse=False):
+def Search(url='', regex='', links='{ver}', ver='', reverse=False, UA=''):
     if not ver:
-        page = GetPage(url)
+        page = GetPage(url, UA=UA)
         i = -1 if reverse else 0
         ver = re.findall(regex, page)[i]
     if isinstance(links, dict):

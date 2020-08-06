@@ -22,6 +22,7 @@ class Soft(object):
     ValidExitCodes = []
     BIN = []
     CMD = {}
+    Depends = []
 
     def __init__(self):
         self.rem = self.getconfig('rem')
@@ -88,6 +89,8 @@ class Soft(object):
             data['bin'] = self.BIN
         if self.CMD:
             data['cmd'] = self.CMD
+        if self.Depends:
+            data['depends'] = self.Depends
         self.data = {'packages': [data]}
         self.data['api'] = self.api
 

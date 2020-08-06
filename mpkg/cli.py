@@ -54,7 +54,8 @@ def sync(jobs, sync, changelog, use_cache):
 @click.argument('pyfile')
 @click.option('--config', is_flag=True)
 @click.option('--install', is_flag=True)
-def load(pyfile, config, install):
+@click.option('--download', is_flag=True)
+def load(pyfile, config, install, download):
     if config:
         Load(pyfile, installed=False)
         return
@@ -63,6 +64,9 @@ def load(pyfile, config, install):
         if install:
             for soft in pkg.data['packages']:
                 App(soft).install()
+        elif download:
+            for soft in pkg.data['packages']:
+                App(soft).download()
         else:
             pprint(pkg.data)
 

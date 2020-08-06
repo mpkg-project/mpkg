@@ -10,6 +10,7 @@ from shutil import rmtree
 import click
 
 from .config import GetConfig, SetConfig
+from .load import GetSofts
 from .utils import Download, Extract, Selected
 
 _ = gettext.gettext
@@ -74,6 +75,8 @@ class App(object):
             data['cmd'] = {}
         if not data.get('valid'):
             data['valid'] = {}
+        self.apps = [App(soft) for soft in GetSofts()
+                     if soft['id'] in data['depends']] if data.get('depends') else []
         self.data = data
 
     def dry_run(self):
@@ -82,12 +85,16 @@ class App(object):
 
     def download_prepare(self):
         if not self.data.get('link'):
-            self.data['link'] = ToLink(self.data['links'])
+            self.data['link'] = ToLink(self.data.get('links'))
 
     def download(self):
         self.download_prepare()
+        if self.apps:
+            for app in self.apps:
+                app.download()
         if not arch in self.data['link']:
-            print(f'warning: {self.data["name"]} has no link available')
+            if not self.apps:
+                print(f'warning: {self.data["name"]} has no link available')
             file = ''
         else:
             file = Download(self.data['link'][arch])
@@ -96,6 +103,9 @@ class App(object):
     def install_prepare(self, args='', quiet=False):
         if not hasattr(self, 'file'):
             self.download()
+        if self.apps:
+            for app in self.apps:
+                app.install_prepare(args, quiet)
         soft = self.data
         file = self.file
         tmp = GetConfig(soft['name'], filename='args.json')
@@ -104,7 +114,9 @@ class App(object):
         if args:
             quiet = True
             soft['args'] = args
-        if quiet:
+        if not file:
+            self.command = ''
+        elif quiet:
             self.command = str(file)+' '+soft['args']
         else:
             self.command = str(file)
@@ -115,7 +127,11 @@ class App(object):
         soft = self.data
         file = self.file
         command = self.command
-        filename = file.name
+        filename = file.name if file else ''
+        if self.apps:
+            for app in self.apps:
+                app.install(veryquiet, verify, force_verify,
+                            delete_tmp, delete_files)
         if force_verify:
             verify = True
         if veryquiet and not soft['args']:
@@ -137,8 +153,9 @@ class App(object):
             else:
                 print(f'warning: skip portable {filename}')
         else:
-            print(_('\ninstalling {name} using {command}').format(
-                name=soft['name'], command=command))
+            if command:
+                print(_('\ninstalling {name} using {command}').format(
+                    name=soft['name'], command=command))
             code = os.system(command)
             if soft['cmd'].get('end'):
                 Execute(soft['cmd']['end'].format(file=str(file)))
@@ -156,7 +173,7 @@ class App(object):
                     passed = True
             if verify and not passed:
                 print(_('verification failed'))
-        if delete_tmp:
+        if delete_tmp and file:
             file.unlink()
 
     def extract(self, with_ver=False):
