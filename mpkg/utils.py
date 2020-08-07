@@ -210,7 +210,7 @@ def Extract(filepath, root='', ver=''):
     if not root:
         root = filepath.parent.absolute() / '.'.join(
             filepath.name.split('.')[:-1])
-    ver = '-' + ver if ver else ''
+    ver = '_' + ver if ver else ''
     root = Path(str(root)+ver)
     extract_dir = root.parent/'mpkg-temp-dir'
     cmd = GetConfig('7z').format(filepath=str(filepath), root=extract_dir)

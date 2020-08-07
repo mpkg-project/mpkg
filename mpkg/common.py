@@ -3,29 +3,51 @@
 
 import gettext
 import json
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, List
 
 from .config import GetConfig, SetConfig
 
 _ = gettext.gettext
 
 
+@dataclass
+class soft_data:
+    id: str = ''
+    cfg: str = ''
+    name: str = ''
+    ver: str = ''
+    date: str = ''
+    notes: str = ''
+    arch: Dict = field(default_factory=dict)
+    sha256: Dict = field(default_factory=dict)
+    links: List = field(default_factory=list)
+    changelog: str = ''
+    args: str = ''
+    bin: Any = field(default_factory=dict)
+    depends: List = field(default_factory=list)
+    cmd: Dict = field(default_factory=dict)
+    valid: List = field(default_factory=list)
+    description: str = ''
+    homepage: str = ''
+    allowExtract: bool = False
+
+    def asdict(self):
+        return asdict(self)
+
+
 class Soft(object):
-    cfg = 'config.json'
     api = 1
+    cfg = 'config.json'
     isMultiple = False
     allowExtract = False
     isPrepared = False
     needConfig = False
     ID = ''
-    SilentArgs = ''
-    Description = ''
-    ValidExitCodes = []
-    BIN = []
-    CMD = {}
-    Depends = []
 
     def __init__(self):
-        self.rem = self.getconfig('rem')
+        self.data = soft_data()
+        self.notes = self.getconfig('notes')
         name = self.getconfig('name')
         if self.isMultiple:
             self.needConfig = True
@@ -33,8 +55,6 @@ class Soft(object):
             self.name = name
         else:
             self.name = self.ID
-        self.ver,  self.links, self.link, self.sha256 = '', [], {}, {}
-        self.date, self.log = [], ''
 
     def _prepare(self):
         pass
@@ -42,7 +62,7 @@ class Soft(object):
     def config(self):
         print(_('\n configuring {0} (press enter to pass)').format(self.ID))
         self.setconfig('name')
-        self.setconfig('rem')
+        self.setconfig('notes')
 
     def setconfig(self, key, value=False):
         if value == False:
@@ -55,46 +75,24 @@ class Soft(object):
     def json(self) -> bytes:
         if not self.isPrepared:
             self.prepare()
-        return json.dumps(self.data).encode('utf-8')
+        return json.dumps(self.json_data).encode('utf-8')
 
     def prepare(self):
         self.isPrepared = True
+        self.packages = []
         self._prepare()
-        data = {}
-        data['id'] = self.ID
-        data['ver'] = self.ver
-        if self.links:
-            data['links'] = self.links
-        if self.link:
-            data['link'] = self.link
-        if self.date:
-            data['date'] = self.date
-        if self.name != self.ID:
-            data['name'] = self.name
-        if self.isMultiple:
-            data['cfg'] = self.cfg
-        if self.SilentArgs:
-            data['args'] = self.SilentArgs
-        if self.rem:
-            data['rem'] = self.rem
-        if self.log:
-            data['changelog'] = self.log
-        if self.Description:
-            data['description'] = self.Description
+        soft = self.data
+        soft.id = self.ID
         if self.allowExtract:
-            data['allowExtract'] = True
-        if self.ValidExitCodes:
-            data['valid'] = self.ValidExitCodes
-        if self.BIN:
-            data['bin'] = self.BIN
-        if self.CMD:
-            data['cmd'] = self.CMD
-        if self.Depends:
-            data['depends'] = self.Depends
-        if self.sha256:
-            data['sha256'] = self.sha256
-        self.data = {'packages': [data]}
-        self.data['api'] = self.api
+            soft.allowExtract = True
+        if self.name != self.ID:
+            soft.name = self.name
+        if self.isMultiple:
+            soft.cfg = self.cfg
+        data = dict([(k, v) for k, v in asdict(soft).items() if v])
+        self.packages.append(data)
+        self.json_data = {'packages': self.packages}
+        self.json_data['api'] = self.api
 
 
 class Driver(Soft):

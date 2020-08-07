@@ -41,11 +41,11 @@ def sync(jobs, sync, changelog, use_cache):
                 print(f'{name}|{value[0]}\t{value[1]}->{value[2]}')
             else:
                 print(f'{name}\t{value[1]}->{value[2]}')
-            if soft.get('rem'):
-                print(f' rem: {soft["rem"]}')
-            rem = GetConfig(soft['name'], filename='rem.json')
-            if rem:
-                print(f' rem: {rem}')
+            if soft.get('notes'):
+                print(f' notes: {soft["notes"]}')
+            notes = GetConfig(soft['name'], filename='notes.json')
+            if notes:
+                print(f' notes: {notes}')
             if changelog and soft.get('changelog'):
                 print(f' changelog: {soft["changelog"]}')
 
@@ -62,13 +62,13 @@ def load(pyfile, config, install, download):
     for pkg in Load(pyfile)[0]:
         pkg.prepare()
         if install:
-            for soft in pkg.data['packages']:
+            for soft in pkg.json_data['packages']:
                 App(soft).install()
         elif download:
-            for soft in pkg.data['packages']:
+            for soft in pkg.json_data['packages']:
                 App(soft).download()
         else:
-            pprint(pkg.data)
+            pprint(pkg.json_data)
 
 
 @cli.command()
@@ -121,12 +121,12 @@ def config(packages, force, load, delete_all, url_redirect):
 @click.option('--filename')
 @click.option('--disable', is_flag=True)
 @click.option('--enable', is_flag=True)
-@click.option('--rem', is_flag=True)
+@click.option('--notes', is_flag=True)
 @click.option('--args', is_flag=True)
 @click.option('--root', is_flag=True)
-def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, rem, args, root):
-    if rem:
-        filename = 'rem.json'
+def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, notes, args, root):
+    if notes:
+        filename = 'notes.json'
     elif args:
         filename = 'args.json'
     elif root:
@@ -135,6 +135,8 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
         filename = 'config.json'
     if not GetConfig('sources'):
         PreInstall()
+    if delete:
+        values = []
     if isdict:
         values = [{values[i]: values[i+1]} for i in range(0, len(values), 2)]
     if add:

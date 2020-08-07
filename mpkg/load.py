@@ -194,6 +194,7 @@ def Sorted(items):
     for pkglist in b:
         pkgs += pkglist
     pkgs = [pkg for pkg in pkgs if pkg.ID]
+    softs = [soft for soft in softs if soft.get('id')]
     return softs, pkgs
 
 
@@ -209,7 +210,7 @@ def ConfigSoft(soft):
 def Prepare(pkg):
     try:
         pkg.prepare()
-        if not hasattr(pkg, 'data') or 'packages' not in pkg.data:
+        if not hasattr(pkg, 'json_data') or 'packages' not in pkg.json_data:
             print(f'warning({pkg.ID}): no data')
             return pkg
     except Exception as err:
@@ -233,7 +234,7 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
 
     with Pool(jobs) as p:
         err = [result for result in p.map(Prepare, pkgs) if result]
-    for soft in [pkg.data['packages'] for pkg in pkgs if pkg not in err]:
+    for soft in [pkg.json_data['packages'] for pkg in pkgs if pkg not in err]:
         softs += soft
 
     Name(softs)
