@@ -20,7 +20,7 @@ class soft_data:
     date: str = ''
     notes: str = ''
     arch: Dict = field(default_factory=dict)
-    sha256: Dict = field(default_factory=dict)
+    sha256: Any = field(default_factory=dict)
     links: List = field(default_factory=list)
     changelog: str = ''
     args: str = ''
@@ -32,8 +32,11 @@ class soft_data:
     homepage: str = ''
     allowExtract: bool = False
 
-    def asdict(self):
-        return asdict(self)
+    def asdict(self, simplify=False):
+        if simplify:
+            return dict([(k, v) for k, v in asdict(self).items() if v])
+        else:
+            return asdict(self)
 
 
 class Soft(object):
@@ -89,8 +92,7 @@ class Soft(object):
             soft.name = self.name
         if self.isMultiple:
             soft.cfg = self.cfg
-        data = dict([(k, v) for k, v in asdict(soft).items() if v])
-        self.packages.append(data)
+        self.packages.append(soft.asdict(simplify=True))
         self.json_data = {'packages': self.packages}
         self.json_data['api'] = self.api
 

@@ -51,24 +51,32 @@ def sync(jobs, sync, changelog, use_cache):
 
 
 @cli.command()
-@click.argument('pyfile')
+@click.argument('file')
 @click.option('--config', is_flag=True)
 @click.option('--install', is_flag=True)
 @click.option('--download', is_flag=True)
-def load(pyfile, config, install, download):
+@click.option('--id')
+def load(file, config, install, download, id):
     if config:
-        Load(pyfile, installed=False)
+        Load(file, installed=False)
         return
-    for pkg in Load(pyfile)[0]:
-        pkg.prepare()
+    loaded = Load(file)
+    if loaded[1] == '.py':
+        apps = []
+        for pkg in loaded[0]:
+            pkg.prepare()
+            apps += [App(soft) for soft in pkg.json_data['packages']]
+    elif loaded[1] == '.json':
+        apps = [App(soft) for soft in loaded[0]]
+    if id:
+        apps = [app for app in apps if app.data.id == id]
+    for app in apps:
         if install:
-            for soft in pkg.json_data['packages']:
-                App(soft).install()
+            app.install()
         elif download:
-            for soft in pkg.json_data['packages']:
-                App(soft).download()
+            app.download()
         else:
-            pprint(pkg.json_data)
+            pprint(app.data.asdict(simplify=True))
 
 
 @cli.command()
@@ -166,6 +174,24 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
     print('set {key}={value}'.format(key=key, value=value))
     if not test:
         SetConfig(key, value, delete=delete, filename=filename)
+
+
+@cli.command()
+@click.argument('key', required=False)
+@click.option('--filename')
+@click.option('--notes', is_flag=True)
+@click.option('--args', is_flag=True)
+@click.option('--root', is_flag=True)
+def get(key, filename, notes, args, root):
+    if notes:
+        filename = 'notes.json'
+    elif args:
+        filename = 'args.json'
+    elif root:
+        filename = 'root.json'
+    else:
+        filename = 'config.json'
+    pprint(GetConfig(key, filename=filename))
 
 
 @cli.command()

@@ -93,8 +93,12 @@ class App(object):
                 print(f'warning: {data.name} has no link available')
             file = ''
         else:
+            if isinstance(data.sha256, list):
+                i = data.links.index(data.arch[arch])
+                data.sha256 = {arch: data.sha256[i]}
             sha256 = data.sha256.get(arch) if data.sha256 else ''
-            file = Download(data.arch[arch], sha256=sha256)
+            filename = data.name+'_'+data.arch[arch].split('/')[-1]
+            file = Download(data.arch[arch], sha256=sha256, filename=filename)
         self.file = file
 
     def install_prepare(self, args='', quiet=False):

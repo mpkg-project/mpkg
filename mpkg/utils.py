@@ -8,6 +8,7 @@ import re
 import shutil
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import unquote
 
 import click
 import requests
@@ -19,8 +20,9 @@ proxy = GetConfig('proxy')
 proxies = {'http': proxy, 'https': proxy} if proxy else {}
 
 
-def Sha256(filepath):
-    h = hashlib.sha256()
+def Hash(filepath, algo='sha256'):
+    if algo in hashlib.algorithms_available:
+        h = eval(f'hashlib.{algo}()')
     blocksize = 2**20
     with open(filepath, 'rb') as f:
         data = f.read(blocksize)
@@ -45,7 +47,7 @@ def Redirect(url: str) -> str:
 def GetPage(url: str, warn=True, UA='', timeout=0) -> str:
     url = Redirect(url)
     if not timeout:
-        timeout = 3
+        timeout = 5
         if GetConfig('timeout'):
             timeout = float(GetConfig('timeout'))
     if GetConfig('debug') == 'yes':
@@ -118,24 +120,27 @@ def Download(url: str, directory='', filename='', output=True, UA='', sha256='')
         print(f'warning: no {file}')
         print(f'command: {command}')
     if sha256:
-        print(_('checking sha256'))
-        if sha256.lower() != Sha256(file):
-            print(f'warning: wrong sha256')
+        sha256 = sha256.lower()
+        algo, sha256 = sha256.split(
+            ':') if ':' in sha256 else ('sha256', sha256)
+        print(_('checking {hash}').format(hash=algo))
+        if sha256 != Hash(file, algo):
+            print(f'warning: wrong {algo}')
     return file
 
 
-def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
-    cfg = []
+def Selected(L: list, isSoft = False, msg = _('select (eg: 0,2-5):')) -> list:
+    cfg=[]
     for i, x in enumerate(L):
         if isSoft:
             print(f'{i} -> {x.name}')
         else:
             print(f'{i} -> {x}')
-    option = input(f' {msg} ').replace(' ', '').split(',')
+    option=input(f' {msg} ').replace(' ', '').split(',')
     print()
     for i in option:
         if '-' in i:
-            a, b = i.split('-')
+            a, b=i.split('-')
             for j in range(int(a), int(b)+1):
                 cfg.append(L[j])
         else:
@@ -144,42 +149,42 @@ def Selected(L: list, isSoft=False, msg=_('select (eg: 0,2-5):')) -> list:
 
 
 def Name(softs):
-    names, ids = [], []
-    multiple, named = [], []
+    names, ids=[], []
+    multiple, named=[], []
     for soft in softs:
-        cfg = soft.get('cfg')
+        cfg=soft.get('cfg')
         if cfg:
             multiple.append(soft)
-        name = soft.get('name')
+        name=soft.get('name')
         if name:
             names.append(name)
             named.append(soft)
         ids.append(soft['id'])
     for soft in named:
         if soft['name'] in ids or names.count(soft['name']) > 1:
-            soft['name'] = soft['name']+'-'+soft['id']
+            soft['name']=soft['name']+'-'+soft['id']
     for soft in multiple:
         if not soft.get('name'):
-            soft['name'] = soft['id']+'.'+soft['name'].split('.')[-1]
-    names = []
+            soft['name']=soft['id']+'.'+soft['name'].split('.')[-1]
+    names=[]
     for soft in softs:
         if not soft.get('name'):
-            soft['name'] = soft['id']
+            soft['name']=soft['id']
         names.append(soft['name'])
     if len(names) != len(set(names)):
         print(f'warning: name conflict\n{names}')
 
 
 def PreInstall():
-    SetConfig('download_dir', str(HOME), replace=False)
-    SetConfig('bin_dir', str(HOME / 'bin'), replace=False)
-    SetConfig('files_dir', str(HOME / 'files'), replace=False)
+    SetConfig('download_dir', str(HOME), replace = False)
+    SetConfig('bin_dir', str(HOME / 'bin'), replace = False)
+    SetConfig('files_dir', str(HOME / 'files'), replace = False)
     SetConfig(
-        '7z', r'"C:\Program Files\7-Zip\7z.exe" x {filepath} -o{root} -aoa > nul', replace=False)
+        '7z', r'"C:\Program Files\7-Zip\7z.exe" x {filepath} -o{root} -aoa > nul', replace = False)
     for folder in ['py', 'json', 'zip', 'bin', 'files']:
-        directory = HOME / folder
+        directory=HOME / folder
         if not directory.exists():
-            directory.mkdir(parents=True)
+            directory.mkdir(parents = True)
 
 
 def DownloadApps(apps):
@@ -192,12 +197,12 @@ def DownloadApps(apps):
 def ReplaceDir(root_src_dir, root_dst_dir):
     # https://stackoverflow.com/q/7420617
     for src_dir, _, files in os.walk(root_src_dir):
-        dst_dir = src_dir.replace(root_src_dir, root_dst_dir, 1)
+        dst_dir=src_dir.replace(root_src_dir, root_dst_dir, 1)
         if not os.path.exists(dst_dir):
             os.makedirs(dst_dir)
         for file_ in files:
-            src_file = os.path.join(src_dir, file_)
-            dst_file = os.path.join(dst_dir, file_)
+            src_file=os.path.join(src_dir, file_)
+            dst_file=os.path.join(dst_dir, file_)
             if os.path.exists(dst_file):
                 os.remove(dst_file)
             shutil.move(src_file, dst_dir)
@@ -205,25 +210,25 @@ def ReplaceDir(root_src_dir, root_dst_dir):
         shutil.rmtree(root_src_dir)
 
 
-def Extract(filepath, root='', ver=''):
-    filepath = Path(filepath)
+def Extract(filepath, root = '', ver = ''):
+    filepath=Path(filepath)
     if not root:
-        root = filepath.parent.absolute() / '.'.join(
+        root=filepath.parent.absolute() / '.'.join(
             filepath.name.split('.')[:-1])
-    ver = '_' + ver if ver else ''
-    root = Path(str(root)+ver)
-    extract_dir = root.parent/'mpkg-temp-dir'
-    cmd = GetConfig('7z').format(filepath=str(filepath), root=extract_dir)
+    ver='_' + ver if ver else ''
+    root=Path(str(root)+ver)
+    extract_dir=root.parent/'mpkg-temp-dir'
+    cmd=GetConfig('7z').format(filepath = str(filepath), root = extract_dir)
     print(_('extracting {filepath} to {root}').format(
         filepath=filepath, root=root))
     os.system(cmd)
-    files, root_new = os.listdir(extract_dir), extract_dir
+    files, root_new=os.listdir(extract_dir), extract_dir
     while len(files) == 1:
-        root_new = root_new/files[0]
+        root_new=root_new/files[0]
         if root_new.is_dir():
-            files = os.listdir(root_new)
+            files=os.listdir(root_new)
         else:
-            root_new = root_new.parent
+            root_new=root_new.parent
             break
     ReplaceDir(str(root_new.absolute()), str(root.absolute()))
     if extract_dir.exists():
@@ -231,20 +236,31 @@ def Extract(filepath, root='', ver=''):
     return root
 
 
-def Search(url='', regex='', links='{ver}', ver='', reverse=False, UA=''):
+def Search(url = '', regex = '', links = '{ver}', ver = '', reverse = False, UA = '', sumurl = ''):
+    if sumurl:
+        return SearchSum(url, sumurl, UA)
     if not ver:
-        page = GetPage(url, UA=UA)
-        i = -1 if reverse else 0
-        ver = re.findall(regex, page)[i]
+        page=GetPage(url, UA = UA)
+        i=-1 if reverse else 0
+        ver=re.findall(regex, page)[i]
     if isinstance(links, dict):
-        result = {}
-        for key, value in links.items():
-            result[key] = value.format(ver=ver)
-        return result
+        return dict([(k, v.format(ver=ver)) for k, v in links.items()])
     elif isinstance(links, list):
-        result = []
-        for item in links:
-            result.append(item.format(ver=ver))
-        return result
+        return [item.format(ver = ver) for item in links]
     else:
-        return links.format(ver=ver)
+        return links.format(ver = ver)
+
+
+def SearchSum(links, sumurl, UA = ''):
+    page=GetPage(sumurl, UA = UA)
+
+    def search(url):
+        name=unquote(url.split('/')[-1])
+        return re.search('(\\S*)\\s*'+name, page).groups()[0]
+
+    if isinstance(links, dict):
+        return dict([(k, search(v)) for k, v in links.items()])
+    elif isinstance(links, list):
+        return [search(item) for item in links]
+    else:
+        return search(links)
