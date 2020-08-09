@@ -8,6 +8,7 @@ from shutil import rmtree
 
 import click
 
+from . import __version__
 from .app import App
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
@@ -17,6 +18,7 @@ _ = gettext.gettext
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
+@click.version_option(__version__, '-v', '--version')
 def cli():
     pass
 

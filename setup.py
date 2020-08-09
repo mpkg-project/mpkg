@@ -1,8 +1,15 @@
+import os
+import re
+
 from setuptools import setup
+
+here = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(here, 'mpkg', '__init__.py'), 'r', encoding='utf-8') as f:
+    __version__ = re.search("__version__.*'([\\d.]+)'", f.read()).groups()[0]
 
 setup(
     name="mpkg",
-    version="0.0.6",
+    version=__version__,
     author="zpcc",
     author_email="zp.c@outlook.com",
     description="A simple package manager.",
