@@ -12,10 +12,10 @@ import click
 from .common import soft_data
 from .config import GetConfig, SetConfig
 from .load import GetSofts
-from .utils import Download, Extract, Selected
+from .utils import Download, Extract, Selected, logger
 
 _ = gettext.gettext
-arch = architecture()[0]
+ARCH = architecture()[0]
 
 
 def ToLink(links: list):
@@ -23,9 +23,9 @@ def ToLink(links: list):
         return {}
     elif len(links) > 1:
         link = Selected(links, msg=_('select a link to download:'))[0]
-        return {arch: link}
+        return {ARCH: link}
     else:
-        return {arch: links[0]}
+        return {ARCH: links[0]}
 
 
 def Execute(string):
@@ -39,7 +39,7 @@ def Execute(string):
         if GetConfig('skip_confirm') == 'yes' or click.confirm(' confirmed ?'):
             code = os.system(cmd)
             if code:
-                print(f'warning: returned {code}')
+                logger.warning(f'returned {code}')
 
 
 def InstallPortable(filepath, soft, delete):
@@ -55,10 +55,21 @@ def InstallPortable(filepath, soft, delete):
     SetConfig(soft['name'], str(root), filename='root_installed.json')
     bin = Path(GetConfig('bin_dir'))
     if isinstance(soft['bin'], dict):
-        soft['bin'] = soft['bin'][arch]
+        soft['bin'] = soft['bin'][ARCH]
     for file in [file for file in soft['bin'] if file != 'MPKG-PORTABLE']:
+        if file.startswith('MPKGLNK|'):
+            strlist = file[8:].split('|')
+            target = root / '|'.join(strlist[1:])
+            cmd = GetConfig('shortcut_command')
+            if cmd and target.is_file():
+                name = strlist[0] if strlist[0] else target.name.split('.')[0]
+                os.system(cmd.format(
+                    name=name, target=target.absolute(), root=target.parent.absolute()))
+            else:
+                logger.warning(f'no shortcut for {target.absolute()}')
+            continue
         binfile = root / file
-        if binfile.exists() and binfile.is_file():
+        if binfile.is_file():
             batfile = bin / (binfile.name.split('.')[0]+'.bat')
             print(_('linking {0} => {1}').format(binfile, batfile))
             os.system('echo @echo off>{0}'.format(batfile))
@@ -88,17 +99,17 @@ class App(object):
         if self.apps:
             for app in self.apps:
                 app.download()
-        if not arch in data.arch:
+        if not ARCH in data.arch:
             if not self.apps:
-                print(f'warning: {data.name} has no link available')
+                logger.warning(f'{data.name} has no link available')
             file = ''
         else:
             if isinstance(data.sha256, list):
-                i = data.links.index(data.arch[arch])
-                data.sha256 = {arch: data.sha256[i]}
-            sha256 = data.sha256.get(arch) if data.sha256 else ''
-            filename = data.name+'_'+data.arch[arch].split('/')[-1]
-            file = Download(data.arch[arch], sha256=sha256, filename=filename)
+                i = data.links.index(data.arch[ARCH])
+                data.sha256 = {ARCH: data.sha256[i]}
+            sha256 = data.sha256.get(ARCH) if data.sha256 else ''
+            filename = data.name+'_'+data.arch[ARCH].split('/')[-1]
+            file = Download(data.arch[ARCH], sha256=sha256, filename=filename)
         self.file = file
 
     def install_prepare(self, args='', quiet=False):
@@ -151,7 +162,7 @@ class App(object):
                     Execute(data.cmd['end'].format(root=root, file=str(file)))
                 self.dry_run()
             else:
-                print(f'warning: skip portable {filename}')
+                logger.warning(f'skip portable {filename}')
         else:
             if command:
                 print(_('\ninstalling {name} using {command}').format(
@@ -167,8 +178,7 @@ class App(object):
                 else:
                     valid = range(data.valid[0], data.valid[1] + 1)
                 if not code in valid:
-                    print(
-                        _('warning: wrong returncode {code}').format(code=code))
+                    logger.warning(f'wrong returncode {code}')
                 else:
                     passed = True
             if verify and not passed:

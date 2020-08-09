@@ -14,6 +14,7 @@ setup(
         "beautifulsoup4>=4.6.3",
         "requests>=2.23.0",
         "click>=7.1.1",
+        "loguru>=0.5.1",
     ],
     entry_points={
         "console_scripts": [

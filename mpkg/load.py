@@ -12,7 +12,7 @@ from shutil import rmtree
 from zipfile import ZipFile
 
 from .config import HOME, GetConfig, SetConfig
-from .utils import Download, GetPage, Name, ReplaceDir
+from .utils import Download, GetPage, Name, ReplaceDir, logger
 
 _ = gettext.gettext
 
@@ -101,8 +101,7 @@ def LoadZip(filepath, latest=False, installed=True):
 
 
 def Load(source: str, ver=-1, installed=True, sync=True, jobs=10):
-    if GetConfig('debug') == 'yes':
-        print(f'debug: loading {source}')
+    logger.debug(f'loading {source}')
     if not source.endswith('.json') and not GetConfig('unsafe') == 'yes':
         return [], '.json'
     if not installed:
@@ -211,10 +210,10 @@ def Prepare(pkg):
     try:
         pkg.prepare()
         if not hasattr(pkg, 'json_data') or 'packages' not in pkg.json_data:
-            print(f'warning({pkg.ID}): no data')
+            logger.warning(f'no data for {pkg.ID}')
             return pkg
     except Exception as err:
-        print(f'error({pkg.ID}): {err}')
+        logger.error(f'{pkg.ID}: {err}')
         return pkg
 
 
@@ -230,7 +229,7 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
 
     score = HasConflict(softs, pkgs)
     if score:
-        print(f'warning(id conflict): {set(score)}')
+        logger.warning(f'id conflict: {set(score)}')
 
     with Pool(jobs) as p:
         err = [result for result in p.map(Prepare, pkgs) if result]
@@ -252,7 +251,7 @@ def GetOutdated():
     outdated = {}
     for name, value in installed.items():
         if not name in latest:
-            print('warning: cannot find '+name)
+            logger.warning(f'cannot find {name}')
             continue
         date = latest[name][1]
         if date:

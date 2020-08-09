@@ -11,7 +11,7 @@ import click
 from .app import App
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
-from .utils import DownloadApps, PreInstall
+from .utils import DownloadApps, PreInstall, logger
 
 _ = gettext.gettext
 
@@ -161,14 +161,14 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
     if disable:
         value_ = GetConfig(key, filename=filename)
         if not value_:
-            print(f'warning: cannot find {key}')
+            logger.warning(f'cannot find {key}')
         if not test:
             SetConfig(key+'-disabled', value_, filename=filename)
         delete = True
     elif enable:
         value = GetConfig(key+'-disabled', filename=filename)
         if not value:
-            print(f'warning: cannot find {key}-disabled')
+            logger.warning(f'cannot find {key}-disabled')
         if not test:
             SetConfig(key+'-disabled', delete=True, filename=filename)
     print('set {key}={value}'.format(key=key, value=value))
