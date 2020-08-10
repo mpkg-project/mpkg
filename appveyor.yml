@@ -16,7 +16,8 @@ install:
     echo from mpkg.cli import cli>installer.py
 
     echo cli() >> installer.py
-
+build_script:
+- cmd: >-
     %PYTHON%\Scripts\pyinstaller.exe installer.py -n mpkg --hidden-import=lxml.etree --hidden-import=bs4
 
     7z a %FILENAME% dist
