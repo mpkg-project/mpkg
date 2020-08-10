@@ -1,0 +1,34 @@
+version: 1.0.{build}
+environment:
+  matrix:
+  - PYTHON: C:\Python37-x64
+    FILENAME: mpkg-win64.zip
+  - PYTHON: C:\Python37
+    FILENAME: mpkg-win32.zip
+install:
+- cmd: >-
+    %PYTHON%\python.exe -m pip install .
+
+    %PYTHON%\python.exe -m pip install pywin32 pyinstaller
+
+    %PYTHON%\python.exe -m pip install setuptools --upgrade
+
+    echo from mpkg.cli import cli>installer.py
+
+    echo cli() >> installer.py
+
+    %PYTHON%\Scripts\pyinstaller.exe installer.py -n mpkg --hidden-import=lxml.etree --hidden-import=bs4
+
+    7z a %FILENAME% dist
+artifacts:
+- path: $(FILENAME)
+deploy:
+- provider: GitHub
+  tag: $(APPVEYOR_REPO_TAG_NAME)
+  release: Release $(APPVEYOR_REPO_TAG_NAME)
+  auth_token:
+    secure: j3X81bgEFw03K4pVlZe/OgN6yy0b8RwN1McEyWb5yeD6Fc5kD864MRRjsatHlQNc
+  artifact: /$(FILENAME)/
+  draft: false
+  on:
+    APPVEYOR_REPO_TAG: true
