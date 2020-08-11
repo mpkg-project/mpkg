@@ -51,8 +51,9 @@ def Redirect(url: str) -> str:
 
 
 @lru_cache()
-def GetPage(url: str, warn=True, UA='', timeout=0) -> str:
-    url = Redirect(url)
+def GetPage(url: str, warn=True, UA='', timeout=0, redirect=True) -> str:
+    if redirect:
+        url = Redirect(url)
     if not timeout:
         timeout = 5
         if GetConfig('timeout'):
@@ -68,10 +69,11 @@ def GetPage(url: str, warn=True, UA='', timeout=0) -> str:
     return res.text
 
 
-def Download(url: str, directory='', filename='', output=True, UA='', sha256=''):
+def Download(url: str, directory='', filename='', output=True, UA='', sha256='', redirect=True):
     if not url.startswith('http'):
         return Path(url)
-    url = Redirect(url)
+    if redirect:
+        url = Redirect(url)
     if not directory:
         directory = GetConfig('download_dir')
     directory = Path(directory)
@@ -241,13 +243,18 @@ def Extract(filepath, root='', ver=''):
     return root
 
 
-def Search(url='', regex='', links='{ver}', ver='', reverse=False, UA='', sumurl=''):
+def Search(url='', regex='', links='{ver}', ver='', sort=False, reverse=False, UA='', sumurl='', findall=False, redirect=True):
     if sumurl:
-        return SearchSum(url, sumurl, UA)
+        return SearchSum(url, sumurl, UA, redirect=redirect)
     if not ver:
-        page = GetPage(url, UA=UA)
+        page = GetPage(url, UA=UA, redirect=redirect)
         i = -1 if reverse else 0
-        ver = re.findall(regex, page)[i]
+        result = re.findall(regex, page)
+        if sort:
+            result = sorted(result)
+        if findall:
+            return result
+        ver = result[i]
     if isinstance(links, dict):
         return dict([(k, v.format(ver=ver)) for k, v in links.items()])
     elif isinstance(links, list):
@@ -256,12 +263,12 @@ def Search(url='', regex='', links='{ver}', ver='', reverse=False, UA='', sumurl
         return links.format(ver=ver)
 
 
-def SearchSum(links, sumurl, UA=''):
-    page = GetPage(sumurl, UA=UA)
+def SearchSum(links, sumurl, UA='', redirect=True):
+    page = GetPage(sumurl, UA=UA, redirect=redirect)
 
     def search(url):
         name = unquote(url.split('/')[-1])
-        return re.search('(\\S*)\\s*'+name, page).groups()[0]
+        return re.search('(\\w+)\\s+\\*?'+name, page).groups()[0]
 
     if isinstance(links, dict):
         return dict([(k, search(v)) for k, v in links.items()])
