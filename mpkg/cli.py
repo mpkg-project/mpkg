@@ -9,7 +9,7 @@ from shutil import rmtree
 import click
 
 from . import __version__
-from .app import App
+from .app import App, Linking
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
 from .utils import DownloadApps, PreInstall, logger
@@ -164,6 +164,7 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
         value_ = GetConfig(key, filename=filename)
         if not value_:
             logger.warning(f'cannot find {key}')
+            exit()
         if not test:
             SetConfig(key+'-disabled', value_, filename=filename)
         delete = True
@@ -171,6 +172,7 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
         value = GetConfig(key+'-disabled', filename=filename)
         if not value:
             logger.warning(f'cannot find {key}-disabled')
+            exit()
         if not test:
             SetConfig(key+'-disabled', delete=True, filename=filename)
     print('set {key}={value}'.format(key=key, value=value))
@@ -299,6 +301,14 @@ def list_(packages, outdated, installed):
         pprint(sorted(Names2Softs(packages)), compact=True)
     else:
         pprint(sorted([soft['name'] for soft in GetSofts()]), compact=True)
+
+
+@cli.command()
+@click.argument('name')
+@click.argument('value', required=False)
+@click.option('-d', '--delete', is_flag=True)
+def alias(name, value, delete):
+    Linking(name, value, delete)
 
 
 if __name__ == "__main__":

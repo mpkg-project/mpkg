@@ -18,6 +18,21 @@ _ = gettext.gettext
 ARCH = architecture()[0]
 
 
+def Linking(name, value='', delete=False):
+    bin_dir = Path(GetConfig('bin_dir'))
+    if os.name == 'nt':
+        batfile = bin_dir / (name+'.bat')
+        if delete:
+            if batfile.exists():
+                batfile.unlink()
+            exit()
+        elif not value:
+            exit()
+        print(_('linking {0} => {1}').format(value, name))
+        os.system('echo @echo off>{0}'.format(batfile))
+        os.system('echo {0} %*>>{1}'.format(value, batfile))
+
+
 def ToLink(links: list):
     if not links:
         return {}
@@ -53,7 +68,6 @@ def InstallPortable(filepath, soft, delete):
         root = Path(GetConfig('files_dir')) / name
     root = Extract(filepath, root)
     SetConfig(soft['name'], str(root), filename='root_installed.json')
-    bin = Path(GetConfig('bin_dir'))
     if isinstance(soft['bin'], dict):
         soft['bin'] = soft['bin'][ARCH]
     for file in [file for file in soft['bin'] if file != 'MPKG-PORTABLE']:
@@ -70,10 +84,11 @@ def InstallPortable(filepath, soft, delete):
             continue
         binfile = root / file
         if binfile.is_file():
-            batfile = bin / (binfile.name.split('.')[0]+'.bat')
-            print(_('linking {0} => {1}').format(binfile, batfile))
-            os.system('echo @echo off>{0}'.format(batfile))
-            os.system('echo {0} %*>>{1}'.format(binfile, batfile))
+            cmd = GetConfig('link_command')
+            if not cmd:
+                Linking(binfile.name.split('.')[0], binfile)
+            else:
+                os.system(cmd.format(name=name, binfile=binfile))
     return root
 
 
