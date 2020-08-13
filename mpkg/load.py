@@ -5,6 +5,7 @@ import gettext
 import importlib
 import json
 import os
+import re
 import time
 from multiprocessing.dummy import Pool
 from pathlib import Path
@@ -268,6 +269,16 @@ def GetOutdated():
 
 def Names2Softs(names: list, softs=False):
     names = [name.lower() for name in names]
+    patterns = [re.compile('^{0}$'.format(name.replace('*', '.*')))
+                for name in names if '*' in name]
+
+    def match(name):
+        for p in patterns:
+            if p.match(name):
+                return True
+        if name in names:
+            return True
+
     if not softs:
         softs_all = GetSofts()
-    return [soft for soft in softs_all if soft['name'].lower() in names]
+    return [soft for soft in softs_all if match(soft['name'].lower())]

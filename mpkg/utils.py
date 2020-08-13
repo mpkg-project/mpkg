@@ -25,6 +25,8 @@ logger.remove()
 level = 'DEBUG' if GetConfig('debug') == 'yes' else 'INFO'
 logger.add(sys.stderr, colorize=True,
            format='<level>{level: <8}</level> | <cyan>{function}</cyan> - <level>{message}</level>', level=level)
+ua = GetConfig('UA')
+UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 mpkg/1' if not ua else ua
 
 
 def Hash(filepath, algo='sha256'):
@@ -51,7 +53,7 @@ def Redirect(url: str) -> str:
 
 
 @lru_cache()
-def GetPage(url: str, warn=True, UA='', timeout=0, redirect=True) -> str:
+def GetPage(url: str, warn=True, UA=UA, timeout=0, redirect=True) -> str:
     if redirect:
         url = Redirect(url)
     if not timeout:
@@ -59,8 +61,6 @@ def GetPage(url: str, warn=True, UA='', timeout=0, redirect=True) -> str:
         if GetConfig('timeout'):
             timeout = float(GetConfig('timeout'))
     logger.debug(f'requesting {url}')
-    if not UA:
-        UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 mpkg/1'
     res = requests.get(
         url, headers={'User-Agent': UA}, timeout=timeout, proxies=proxies)
     if warn and res.status_code != 200:
@@ -69,7 +69,7 @@ def GetPage(url: str, warn=True, UA='', timeout=0, redirect=True) -> str:
     return res.text
 
 
-def Download(url: str, directory='', filename='', output=True, UA='', sha256='', redirect=True):
+def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='', redirect=True):
     if not url.startswith('http'):
         return Path(url)
     if redirect:
@@ -243,7 +243,7 @@ def Extract(filepath, root='', ver=''):
     return root
 
 
-def Search(url='', regex='', links='{ver}', ver='', sort=False, reverse=False, UA='', sumurl='', findall=False, redirect=True):
+def Search(url='', regex='', links='{ver}', ver='', sort=False, reverse=False, UA=UA, sumurl='', findall=False, redirect=True):
     if sumurl:
         return SearchSum(url, sumurl, UA, redirect=redirect)
     if not ver:
@@ -263,7 +263,7 @@ def Search(url='', regex='', links='{ver}', ver='', sort=False, reverse=False, U
         return links.format(ver=ver)
 
 
-def SearchSum(links, sumurl, UA='', redirect=True):
+def SearchSum(links, sumurl, UA=UA, redirect=True):
     page = GetPage(sumurl, UA=UA, redirect=redirect)
 
     def search(url):

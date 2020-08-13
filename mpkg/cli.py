@@ -55,8 +55,8 @@ def sync(jobs, sync, changelog, use_cache):
 @cli.command()
 @click.argument('file')
 @click.option('--config', is_flag=True)
-@click.option('--install', is_flag=True)
-@click.option('--download', is_flag=True)
+@click.option('-i', '--install', is_flag=True)
+@click.option('-d', '--download', is_flag=True)
 @click.option('--id')
 def load(file, config, install, download, id):
     if config:
@@ -87,7 +87,11 @@ def load(file, config, install, download, id):
 @click.option('--load/--no-load', default=True)
 @click.option('--delete-all', is_flag=True)
 @click.option('--url-redirect', is_flag=True)
-def config(packages, force, load, delete_all, url_redirect):
+@click.option('--pre-install', is_flag=True)
+def config(packages, force, load, delete_all, url_redirect, pre_install):
+    if pre_install:
+        PreInstall()
+        return
     if packages:
         for soft in Names2Softs(packages):
             ConfigSoft(soft)
@@ -164,7 +168,7 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
         value_ = GetConfig(key, filename=filename)
         if not value_:
             logger.warning(f'cannot find {key}')
-            exit()
+            return
         if not test:
             SetConfig(key+'-disabled', value_, filename=filename)
         delete = True
@@ -172,7 +176,7 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
         value = GetConfig(key+'-disabled', filename=filename)
         if not value:
             logger.warning(f'cannot find {key}-disabled')
-            exit()
+            return
         if not test:
             SetConfig(key+'-disabled', delete=True, filename=filename)
     print('set {key}={value}'.format(key=key, value=value))
@@ -221,7 +225,8 @@ def download(packages, install):
 @click.option('--args')
 @click.option('--verify', is_flag=True)
 @click.option('--force-verify', is_flag=True)
-def install(packages, download, outdated, dry_run, delete_tmp, delete_files, quiet, veryquiet, args, verify, force_verify):
+@click.option('--no-bin', is_flag=True)
+def install(packages, download, outdated, dry_run, delete_tmp, delete_files, quiet, veryquiet, args, verify, force_verify, no_bin):
     print('By installing you accept licenses for the packages.\n')
     if veryquiet:
         quiet = True
@@ -248,7 +253,7 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
                         os.system(f'echo {app.command} >> {script}')
             else:
                 app.install(veryquiet, verify, force_verify,
-                            delete_tmp, delete_files)
+                            delete_tmp, delete_files, no_bin)
 
 
 @cli.command()
@@ -291,15 +296,17 @@ def remove(packages):
 @click.argument('packages', nargs=-1)
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('-i', '--installed', is_flag=True)
-def list_(packages, outdated, installed):
+@click.option('-A', '--all', is_flag=True)
+def list_(packages, outdated, installed, all):
     if installed:
         pkgs = GetConfig(filename='installed.json')
         pprint(sorted(list(pkgs.keys())), compact=True)
     elif outdated:
         pprint(sorted(list(GetOutdated().keys())), compact=True)
     elif packages:
-        pprint(sorted(Names2Softs(packages)), compact=True)
-    else:
+        pprint(sorted(Names2Softs(packages),
+                      key=lambda x: x.get('name')), compact=True)
+    elif all:
         pprint(sorted([soft['name'] for soft in GetSofts()]), compact=True)
 
 

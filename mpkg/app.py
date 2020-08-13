@@ -3,9 +3,9 @@
 
 import gettext
 import os
+import shutil
 from pathlib import Path
 from platform import architecture
-from shutil import rmtree
 
 import click
 
@@ -25,9 +25,9 @@ def Linking(name, value='', delete=False):
         if delete:
             if batfile.exists():
                 batfile.unlink()
-            exit()
+            return
         elif not value:
-            exit()
+            return
         print(_('linking {0} => {1}').format(value, name))
         os.system('echo @echo off>{0}'.format(batfile))
         os.system('echo {0} %*>>{1}'.format(value, batfile))
@@ -57,28 +57,45 @@ def Execute(string):
                 logger.warning(f'returned {code}')
 
 
-def InstallPortable(filepath, soft, delete):
+def InstallPortable(filepath, soft, delete, no_bin):
     if delete:
         old = Path(GetConfig(soft['name'], filename='root_installed.json'))
         if old.exists():
-            rmtree(old)
+            shutil.rmtree(old)
     root = GetConfig(soft['name'], filename='root.json')
     if not root:
         name = soft['name']
         root = Path(GetConfig('files_dir')) / name
-    root = Extract(filepath, root)
+    if 'MPKG-PORTABLE-EXE' in soft['bin']:
+        soft['bin'].remove('MPKG-PORTABLE-EXE')
+        if not root.exists():
+            root.mkdir()
+        filepath = shutil.move(filepath, root/filepath.name)
+    else:
+        root = Extract(filepath, root)
+    if no_bin:
+        soft['bin'] = ['MPKG-PORTABLE']
     SetConfig(soft['name'], str(root), filename='root_installed.json')
     if isinstance(soft['bin'], dict):
         soft['bin'] = soft['bin'][ARCH]
     for file in [file for file in soft['bin'] if file != 'MPKG-PORTABLE']:
+        if isinstance(file, list):
+            args = ' ' + file[2] if len(file) == 3 else ''
+            file, alias = file[0], file[1]
+        else:
+            args, alias = '', ''
         if file.startswith('MPKGLNK|'):
             strlist = file[8:].split('|')
-            target = root / '|'.join(strlist[1:])
+            if len(strlist) == 2:
+                strlist.append('')
+            target = root / strlist[1]
+            args = '|'.join(strlist[2:])
+            args = ' '+args if args else ''
             cmd = GetConfig('shortcut_command')
             if cmd and target.is_file():
                 name = strlist[0] if strlist[0] else target.name.split('.')[0]
                 os.system(cmd.format(
-                    name=name, target=target.absolute(), root=target.parent.absolute()))
+                    name=name, target=target.absolute(), root=target.parent.absolute(), args=args))
             else:
                 logger.warning(f'no shortcut for {target.absolute()}')
             continue
@@ -86,7 +103,9 @@ def InstallPortable(filepath, soft, delete):
         if binfile.is_file():
             cmd = GetConfig('link_command')
             if not cmd:
-                Linking(binfile.name.split('.')[0], binfile)
+                name = alias if alias else binfile.name.split('.')[0]
+                value = str(binfile)+args if args else binfile
+                Linking(name, value)
             else:
                 os.system(cmd.format(name=name, binfile=binfile))
     return root
@@ -148,7 +167,7 @@ class App(object):
         else:
             self.command = str(file)
 
-    def install(self, veryquiet=False, verify=False, force_verify=False, delete_tmp=False, delete_files=False):
+    def install(self, veryquiet=False, verify=False, force_verify=False, delete_tmp=False, delete_files=False, no_bin=False):
         if not hasattr(self, 'command'):
             self.install_prepare()
         data = self.data
@@ -172,7 +191,8 @@ class App(object):
             Execute(data.cmd['start'].format(file=str(file)))
         if data.bin:
             if GetConfig('allow_portable') == 'yes':
-                root = InstallPortable(file, data.asdict(), delete_files)
+                root = InstallPortable(
+                    file, data.asdict(), delete_files, no_bin)
                 if data.cmd.get('end'):
                     Execute(data.cmd['end'].format(root=root, file=str(file)))
                 self.dry_run()
