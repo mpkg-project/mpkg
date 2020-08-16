@@ -101,14 +101,14 @@ def LoadZip(filepath, latest=False, installed=True):
     return [Load(file, installed=installed) for file in files]
 
 
-def Load(source: str, ver=-1, installed=True, sync=True, jobs=10):
+def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True):
     logger.debug(f'loading {source}')
     if not source.endswith('.json') and not GetConfig('unsafe') == 'yes':
         return [], '.json'
     if not installed:
         sync = True
     if source.endswith('.py'):
-        filepath = Save(source, ver, sync)[0]
+        filepath = Save(source, ver, sync, check_ver)[0]
         pkg = LoadFile(filepath)
         if pkg.needConfig and not installed:
             Configurate(filepath)
@@ -125,11 +125,11 @@ def Load(source: str, ver=-1, installed=True, sync=True, jobs=10):
             pkgs = [pkg]
         return pkgs, '.py'
     elif source.endswith('.json'):
-        filepath = Save(source, ver, sync)[0]
+        filepath = Save(source, ver, sync, check_ver)[0]
         with open(filepath, 'r', encoding="utf8") as f:
             return json.load(f)['packages'], '.json'
     elif source.endswith('.zip'):
-        filepath, latest = Save(source, ver, sync)
+        filepath, latest = Save(source, ver, sync, check_ver)
         return LoadZip(filepath, latest, installed), '.zip'
     elif source.endswith('.sources'):
         if source.startswith('http'):
@@ -145,6 +145,9 @@ def Load(source: str, ver=-1, installed=True, sync=True, jobs=10):
             score = [x for x in p.map(lambda x: Load(
                 x[0], x[1], installed, sync), sources.items()) if x]
         return score, '.sources'
+    elif source.endswith('.latest'):
+        time.sleep(0.1)
+        return Load(source[:-7], ver, installed, sync, jobs, False)
 
 
 def HasConflict(softs, pkgs) -> list:

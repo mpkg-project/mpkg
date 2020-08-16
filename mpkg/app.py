@@ -62,7 +62,7 @@ def InstallPortable(filepath, soft, delete, no_bin):
         old = Path(GetConfig(soft['name'], filename='root_installed.json'))
         if old.exists():
             shutil.rmtree(old)
-    root = GetConfig(soft['name'], filename='root.json')
+    root = GetConfig(soft['name'], filename='root.json').format(ver=soft['ver'])
     if not root:
         name = soft['name']
         root = Path(GetConfig('files_dir')) / name
