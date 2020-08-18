@@ -183,7 +183,7 @@ def Name(softs):
 
 
 def PreInstall():
-    SetConfig('download_dir', str(HOME), replace=False)
+    SetConfig('download_dir', str(HOME / 'Downloads'), replace=False)
     SetConfig('bin_dir', str(HOME / 'bin'), replace=False)
     SetConfig('files_dir', str(HOME / 'files'), replace=False)
     SetConfig(

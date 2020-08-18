@@ -204,7 +204,7 @@ def get(key, filename, notes, args, root):
 
 @cli.command()
 @click.argument('packages', nargs=-1, required=True)
-@click.option('--install', is_flag=True)
+@click.option('-i', '--install', is_flag=True)
 def download(packages, install):
     apps = [App(soft) for soft in Names2Softs(packages)]
     DownloadApps(apps)
@@ -260,12 +260,13 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
 @click.argument('packages', nargs=-1)
 @click.option('--set-root')
 @click.option('--with-ver', is_flag=True)
-@click.option('--install', is_flag=True)
-def extract(packages, install, set_root, with_ver):
-    if not packages:
+@click.option('-i', '--install', is_flag=True)
+@click.option('-A', '--all', is_flag=True)
+def extract(packages, install, set_root, with_ver, all):
+    if all:
         pprint(sorted([soft['name'] for soft in GetSofts()
                        if soft.get('allowExtract') or soft.get('bin')]), compact=True)
-    else:
+    elif packages:
         softs = Names2Softs(packages)
         if set_root:
             SetConfig(softs[0]['name'], set_root, filename='xroot.json')
@@ -292,12 +293,12 @@ def remove(packages):
         return
 
 
-@cli.command('list')
+@cli.command()
 @click.argument('packages', nargs=-1)
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('-i', '--installed', is_flag=True)
 @click.option('-A', '--all', is_flag=True)
-def list_(packages, outdated, installed, all):
+def show(packages, outdated, installed, all):
     if installed:
         pkgs = GetConfig(filename='installed.json')
         pprint(sorted(list(pkgs.keys())), compact=True)
@@ -316,6 +317,16 @@ def list_(packages, outdated, installed, all):
 @click.option('-d', '--delete', is_flag=True)
 def alias(name, value, delete):
     Linking(name, value, delete)
+
+
+@cli.command()
+@click.argument('strings', nargs=-1)
+def search(strings):
+    for soft in GetSofts():
+        result = [1 for string in strings if string in soft['name']
+                  or string in soft.get('description', '')]
+        if sum(result) == len(strings):
+            print(soft['name'])
 
 
 if __name__ == "__main__":
