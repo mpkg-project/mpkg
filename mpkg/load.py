@@ -9,6 +9,7 @@ import re
 import time
 from multiprocessing.dummy import Pool
 from pathlib import Path
+from random import random
 from shutil import rmtree
 from zipfile import ZipFile
 
@@ -103,7 +104,7 @@ def LoadZip(filepath, latest=False, installed=True):
 
 def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True):
     logger.debug(f'loading {source}')
-    if not source.endswith('.json') and not GetConfig('unsafe') == 'yes':
+    if not source.endswith('.latest') and not source.endswith('.json') and not GetConfig('unsafe') == 'yes':
         return [], '.json'
     if not installed:
         sync = True
@@ -146,7 +147,7 @@ def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True
                 x[0], x[1], installed, sync), sources.items()) if x]
         return score, '.sources'
     elif source.endswith('.latest'):
-        time.sleep(0.1)
+        time.sleep(round(random(), 2))
         return Load(source[:-7], ver, installed, sync, jobs, False)
 
 
@@ -249,6 +250,7 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
 
 def GetOutdated():
     installed = GetConfig(filename='installed.json')
+    installed = installed if installed else {}
     latest = {}
     for soft in GetSofts():
         latest[soft['name']] = [soft['ver'], soft.get('date')]
