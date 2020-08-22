@@ -322,9 +322,10 @@ def alias(name, value, delete):
 @cli.command()
 @click.argument('strings', nargs=-1)
 def search(strings):
+    strings = [s.lower() for s in strings]
     for soft in GetSofts():
-        result = [1 for string in strings if string in soft['name']
-                  or string in soft.get('description', '')]
+        result = [1 for string in strings if string in soft['name'].lower()
+                  or string in soft.get('description', '').lower()]
         if sum(result) == len(strings):
             print(soft['name'])
 

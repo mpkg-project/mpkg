@@ -56,7 +56,8 @@ def Save(source: str, ver=-1, sync=True, check_ver=True):
                 Download(url, directory=abspath, filename=filename)
                 return filepath, latest
             if verattr == -1:
-                res = GetPage(url + '.ver', warn=False).replace(' ', '')
+                res = GetPage(
+                    url + '.ver', warn=False).replace(' ', '').strip()
                 ver = -1 if not res.isnumeric() else int(res)
             else:
                 ver = verattr
@@ -104,7 +105,7 @@ def LoadZip(filepath, latest=False, installed=True):
 
 def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True):
     logger.debug(f'loading {source}')
-    if not source.endswith('.latest') and not source.endswith('.json') and not GetConfig('unsafe') == 'yes':
+    if not GetConfig('unsafe') == 'yes' and not source.split('.')[-1] in ['latest', 'nightly', 'json']:
         return [], '.json'
     if not installed:
         sync = True
@@ -149,6 +150,9 @@ def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True
     elif source.endswith('.latest'):
         time.sleep(round(random(), 2))
         return Load(source[:-7], ver, installed, sync, jobs, False)
+    elif source.endswith('.nightly'):
+        time.sleep(round(random(), 2))
+        return Load(source[:-8], int(time.strftime('%y%m%d')), installed, sync, jobs)
 
 
 def HasConflict(softs, pkgs) -> list:

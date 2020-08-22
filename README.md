@@ -7,7 +7,7 @@ mpkg 主要用于下载最新的软件，对安装软件的支持不佳，默认
 ```bash
 #pip install mpkg
 pip install git+https://github.com/mpkg-project/mpkg.git
-mpkg set sources --add https://github.com/mpkg-project/mpkg-autobuild/releases/download/AutoBuild/main.json.latest
+mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/main.json
 mpkg sync
 
 mpkg show -A
@@ -22,23 +22,45 @@ mpkg install 7zip
 
 软件源以扩展名分为 .json, .py, .zip, .sources 四类。py 源类似爬虫，用于获取软件信息，而软件信息都可以表示为 json 源的形式。通过 zip 源与 sources 源可以处理多个 py 源与 json 源。非 json 源需要执行`mpkg set unsafe yes`以启用。
 
-软件源地址若以 http 开头，则会同时请求 `文件名.ver` 文件判断有无更新（sources 源除外）。若不以 http 开头则识别为本地路径（建议使用绝对路径），不读取 .ver 文件，直接加载本地文件。在软件源地址后加 .latest 可跳过 .ver 文件的获取。
-
-`mpkg sync`会同步所有软件源并显示有无更新。`mpkg list -A`显示软件源中所有软件的 name 值。`mpkg show example`显示软件详细信息，`mpkg install example`会下载软件并保存版本号等信息，然后直接运行 exe 文件。`mpkg download example`仅下载软件，且不保留安装信息。
+`mpkg sync`会同步所有软件源并显示有无更新。`mpkg show -A`显示软件源中所有软件的 name 值。`mpkg show example`显示软件详细信息，`mpkg install example`会下载软件并保存版本号等信息，然后直接运行 exe 文件。`mpkg download example`仅下载软件，且不保留安装信息。
 
 注意，安装过程中出现 warning 仍视为安装成功。
+
+### 软件信息示例
+
+```python
+[{'args': '/S', # 可选，mpkg install 加入 --quiet(-q) 选项后会在调用安装包时追加此字符串
+  'changelog': 'https://nmap.org/changelog.html',
+  # 可选，mpkg sync 加入 --changelog(-l) 选项后会在软件包有更新时同时显示此字符串
+  'id': 'nmap', # 必须存在，且保证软件源中 id 不重复
+  'links': ['https://nmap.org/dist/nmap-7.80-setup.exe'],
+  # links 与 arch 必选其一，不能共存，在下载过程中使用
+  # 且下载过程中只会下载一个链接，若 links 有多项则会要求用户进行选择
+  'name': 'nmap', # 可选，程序通过 name 值区分软件，此键会根据 id 自动生成
+  'ver': '7.80' # 必须存在，且为字符串
+  }]
+[{'arch': {'32bit': 'https://github.com/zhongyang219/TrafficMonitor/releases/download/V1.79.1/TrafficMonitor_V1.79.1_x86.7z',
+           '64bit': 'https://github.com/zhongyang219/TrafficMonitor/releases/download/V1.79.1/TrafficMonitor_V1.79.1_x64.7z'},
+  'bin': ['MPKG-PORTABLE'], # 可选，存在此键时软件会识别为 portable 类型，并自动解压下载后的安装包
+  # MPKG-PORTABLE 用于占位，若为其他值，则会生成调用命令
+  'cmd': {'end': 'cd /d "{root}" && start TrafficMonitor.exe',
+          'start': 'taskkill /im TrafficMonitor.exe /t >nul'},
+  # 可选，在程序安装前后调用
+  'id': 'TrafficMonitor.install',
+  'ver': '1.79.1'}]
+```
 
 ### 重要选项
 
 #### mpkg set allow_portable yes
 
-若软件无安装包（如 TrafficMonitor.portable），需要安装 7zip 并执行`mpkg set allow_portable yes`，否则会出现类似`skip portable ...`的 warning。
+若软件为 portable 类型（如 wget，无安装包），需要安装 7zip 并执行`mpkg set allow_portable yes`，否则会出现类似`skip portable ...`的 warning。此外，wget 等软件会生成调用命令，同时需要修改环境变量（参考 set link_command 部分）。
 
-注意，若软件信息中包含 bin 字段，则视为无安装包的 portable 类型。mpkg 会调用`C:\Program Files\7-Zip\7z.exe`解压压缩包。若 7z 安装位置有误，可进行手动设置（如`mpkg set 7z "\"C:\Program Files (x86)\7-Zip\7z.exe\" x {filepath} -o{root} -aoa > nul"`）。
+注意，mpkg 会调用`C:\Program Files\7-Zip\7z.exe`解压压缩包。若 7z 安装位置有误，可进行手动设置（如`mpkg set 7z "\"C:\Program Files (x86)\7-Zip\7z.exe\" x {filepath} -o{root} -aoa > nul"`）。
 
 #### mpkg set allow_cmd yes
 
-若软件需要调用 cmd 命令（如 TrafficMonitor.install），则需要执行`mpkg set allow_cmd yes`，否则会输出`skip command(...)`。在调用 cmd 命令时会要求输入 y 进行确认，可通过执行`mpkg set skip_confirm yes`跳过。
+若软件需要调用 cmd 命令（如 TrafficMonitor.install），则需要执行`mpkg set allow_cmd yes`，否则会输出`skip command(...)`。在调用 cmd 命令时会要求输入 y 进行确认，可通过执行 `mpkg set no_confirmation yes` 跳过确认。
 
 #### mpkg set shortcut_command ...
 
@@ -51,7 +73,7 @@ mpkg set shortcut_command "mshta VBScript:Execute(\"Set a=CreateObject(\"\"WScri
 
 #### mpkg set link_command ...
 
-mpkg 可以通过创建 bat 的方式调用命令（如 curl, wget, adb 等），但需要手动加入`%USERPROFILE%\.config\mpkg\bin`至 PATH 环境变量中。可以忽略对 link_command 的设置。
+mpkg 可以通过创建 bat 的方式调用命令（如 curl, wget, adb 等），但需要手动加入`%USERPROFILE%\.config\mpkg\bin`（也可通过 `mpkg get bin_dir` 查看目录位置）至 PATH 环境变量中。可以忽略对 link_command 的设置。
 
 ### 杂项
 
@@ -73,7 +95,7 @@ mpkg set UA "..."
 # 执行后，进行页面请求与软件下载会使用此UA
 
 mpkg set timeout 6
-# 执行后，页面请求超时时间修改为6秒（默认为5秒）
+# 执行后，请求超时时间修改为6秒（默认为5秒）
 
 mpkg set files_dir ...
 # portable 类型的软件会解压至此目录，默认为 %USERPROFILE%\.config\mpkg\files

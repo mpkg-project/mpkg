@@ -27,6 +27,8 @@ logger.add(sys.stderr, colorize=True,
            format='<level>{level: <8}</level> | <cyan>{function}</cyan> - <level>{message}</level>', level=level)
 ua = GetConfig('UA')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 mpkg/1' if not ua else ua
+timeout = GetConfig('timeout')
+timeout = float(timeout) if timeout else 5
 
 
 def Hash(filepath, algo='sha256'):
@@ -53,13 +55,9 @@ def Redirect(url: str) -> str:
 
 
 @lru_cache()
-def GetPage(url: str, warn=True, UA=UA, timeout=0, redirect=True) -> str:
+def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True) -> str:
     if redirect:
         url = Redirect(url)
-    if not timeout:
-        timeout = 5
-        if GetConfig('timeout'):
-            timeout = float(GetConfig('timeout'))
     logger.debug(f'requesting {url}')
     res = requests.get(
         url, headers={'User-Agent': UA}, timeout=timeout, proxies=proxies)
@@ -69,7 +67,7 @@ def GetPage(url: str, warn=True, UA=UA, timeout=0, redirect=True) -> str:
     return res.text
 
 
-def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='', redirect=True):
+def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='', redirect=True, timeout=timeout):
     if not url.startswith('http'):
         return Path(url)
     if redirect:
@@ -99,7 +97,7 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
         os.system(command)
     else:
         req = requests.get(url, stream=True, proxies=proxies,
-                           headers={'User-Agent': UA})
+                           headers={'User-Agent': UA}, timeout=timeout)
         if req.status_code != 200:
             logger.warning(f'{req.status_code} error')
             print(' try to download it with downloader')

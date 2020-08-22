@@ -51,7 +51,7 @@ def Execute(string):
         return
     for cmd in string.strip().split('\n'):
         print(f'executing {cmd}')
-        if GetConfig('skip_confirm') == 'yes' or click.confirm(' confirmed ?'):
+        if GetConfig('no_confirmation') == 'yes' or click.confirm(' confirmed ?'):
             code = os.system(cmd)
             if code:
                 logger.warning(f'returned {code}')
