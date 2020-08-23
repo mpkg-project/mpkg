@@ -42,6 +42,6 @@ def GetConfig(key='', path='', filename='config.json', abspath=''):
     with file.open('r') as f:
         data = json.loads(f.read())
     if key:
-        return data.get(key)
+        return data.get(key, '')
     else:
         return data

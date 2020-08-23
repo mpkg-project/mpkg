@@ -12,7 +12,7 @@ from . import __version__
 from .app import App, Linking
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
-from .utils import DownloadApps, PreInstall, logger
+from .utils import DownloadApps, PreInstall, logger, proxy
 
 _ = gettext.gettext
 
@@ -29,6 +29,8 @@ def cli():
 @click.option('-l', '--changelog', is_flag=True)
 @click.option('--use-cache', is_flag=True)
 def sync(jobs, sync, changelog, use_cache):
+    if proxy:
+        print(f'using proxy: {proxy}\n')
     softs = GetSofts(jobs, sync, use_cache=use_cache)
     names = [soft['name'] for soft in softs]
     outdated = sorted(list(GetOutdated().items()),

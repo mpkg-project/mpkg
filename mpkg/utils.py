@@ -55,7 +55,7 @@ def Redirect(url: str) -> str:
 
 
 @lru_cache()
-def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True) -> str:
+def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True, tojson=False) -> str:
     if redirect:
         url = Redirect(url)
     logger.debug(f'requesting {url}')
@@ -64,7 +64,8 @@ def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True) -> str:
     if warn and res.status_code != 200:
         logger.warning(f'{url} {res.status_code} error')
         return 'error'
-    return res.text
+    result = res.json() if tojson else res.text
+    return result
 
 
 def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='', redirect=True, timeout=timeout):
