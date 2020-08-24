@@ -26,7 +26,8 @@ level = 'DEBUG' if GetConfig('debug') == 'yes' else 'INFO'
 logger.add(sys.stderr, colorize=True,
            format='<level>{level: <8}</level> | <cyan>{function}</cyan> - <level>{message}</level>', level=level)
 ua = GetConfig('UA')
-UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 mpkg/1' if not ua else ua
+DefaultUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101'
+UA = DefaultUA if not ua else ua
 timeout = GetConfig('timeout')
 timeout = float(timeout) if timeout else 5
 
@@ -69,6 +70,7 @@ def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True, tojson=F
 
 
 def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='', redirect=True, timeout=timeout):
+    UA = 'Wget/1.20.3 (mingw32)' if UA == DefaultUA else UA
     if not url.startswith('http'):
         return Path(url)
     if redirect:

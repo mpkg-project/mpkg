@@ -92,7 +92,7 @@ mpkg set redirect --add --dict "^https?://github.com/(.*)/raw/master/(.*)" https
 # 执行后，进行页面请求与软件下载会重定向网站，语法同正则表达式
 
 mpkg set UA "..."
-# 执行后，进行页面请求与软件下载会使用此UA
+# 执行后，进行页面请求与软件下载时会使用此UA。修改后可能出问题，使用 mpkg set UA --delete 还原
 
 mpkg set timeout 6
 # 执行后，请求超时时间修改为6秒（默认为5秒）
