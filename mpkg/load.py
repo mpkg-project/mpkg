@@ -246,6 +246,10 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
         softs += soft
 
     Name(softs)
+    names = [soft['name'] for soft in softs]
+    for name, new in GetConfig(filename='name.json', default={}).items():
+        if new not in names and name in names:
+            softs[names.index(name)]['name'] = new
     if not softs == softs_:
         SetConfig('softs', softs, filename='softs.json')
 

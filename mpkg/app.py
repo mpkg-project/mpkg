@@ -57,12 +57,13 @@ def Execute(string):
                 logger.warning(f'returned {code}')
 
 
-def InstallPortable(filepath, soft, delete, no_bin):
+def InstallPortable(filepath, soft, delete):
     if delete:
         old = Path(GetConfig(soft['name'], filename='root_installed.json'))
         if old.exists():
             shutil.rmtree(old)
-    root = GetConfig(soft['name'], filename='root.json').format(ver=soft['ver'])
+    root = GetConfig(soft['name'], filename='root.json',
+                     default='').format(ver=soft['ver'])
     if not root:
         name = soft['name']
         root = Path(GetConfig('files_dir')) / name
@@ -73,8 +74,6 @@ def InstallPortable(filepath, soft, delete, no_bin):
         filepath = shutil.move(filepath, root/filepath.name)
     else:
         root = Extract(filepath, root)
-    if no_bin:
-        soft['bin'] = ['MPKG-PORTABLE']
     SetConfig(soft['name'], str(root), filename='root_installed.json')
     if isinstance(soft['bin'], dict):
         soft['bin'] = soft['bin'][ARCH]
@@ -167,7 +166,7 @@ class App(object):
         else:
             self.command = str(file)
 
-    def install(self, veryquiet=False, verify=False, force_verify=False, delete_tmp=False, delete_files=False, no_bin=False):
+    def install(self, veryquiet=False, verify=False, force_verify=False, delete_tmp=False, delete_files=False, portable=False):
         if not hasattr(self, 'command'):
             self.install_prepare()
         data = self.data
@@ -189,10 +188,12 @@ class App(object):
         code = -1
         if data.cmd.get('start'):
             Execute(data.cmd['start'].format(file=str(file)))
+        if portable:
+            data.bin = ['MPKG-PORTABLE']
         if data.bin:
             if GetConfig('allow_portable') == 'yes':
                 root = InstallPortable(
-                    file, data.asdict(), delete_files, no_bin)
+                    file, data.asdict(), delete_files)
                 if data.cmd.get('end'):
                     Execute(data.cmd['end'].format(root=root, file=str(file)))
                 self.dry_run()

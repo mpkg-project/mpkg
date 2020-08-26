@@ -178,6 +178,7 @@ def Name(softs):
     for soft in softs:
         if not soft.get('name'):
             soft['name'] = soft['id']
+        soft['name'] = soft['name'].lower()
         names.append(soft['name'])
     if len(names) != len(set(names)):
         logger.warning(f'name conflict\n{names}')

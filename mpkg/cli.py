@@ -140,19 +140,29 @@ def config(packages, force, load, delete_all, url_redirect, pre_install):
 @click.option('--notes', is_flag=True)
 @click.option('--args', is_flag=True)
 @click.option('--root', is_flag=True)
-def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, notes, args, root):
+@click.option('--name', is_flag=True)
+def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, notes, args, root, name):
     if notes:
         filename = 'notes.json'
     elif args:
         filename = 'args.json'
     elif root:
         filename = 'root.json'
+    elif name:
+        filename = 'name.json'
+        if not delete:
+            values[0] = values[0].lower()
+            if values[0] in [soft['name'] for soft in GetSofts()] or values[0] in GetConfig(filename='name.json', default={}):
+                logger.warning(f'name already exists')
+                return
     else:
         filename = 'config.json'
     if not GetConfig('sources'):
         PreInstall()
     if delete:
         values = []
+        if not GetConfig(key, filename=filename):
+            logger.warning(f'invalid key')
     if isdict:
         values = [{values[i]: values[i+1]} for i in range(0, len(values), 2)]
     if add:
@@ -192,13 +202,16 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
 @click.option('--notes', is_flag=True)
 @click.option('--args', is_flag=True)
 @click.option('--root', is_flag=True)
-def get(key, filename, notes, args, root):
+@click.option('--name', is_flag=True)
+def get(key, filename, notes, args, root, name):
     if notes:
         filename = 'notes.json'
     elif args:
         filename = 'args.json'
     elif root:
         filename = 'root.json'
+    elif name:
+        filename = 'name.json'
     else:
         filename = 'config.json'
     pprint(GetConfig(key, filename=filename))
@@ -227,8 +240,8 @@ def download(packages, install):
 @click.option('--args')
 @click.option('--verify', is_flag=True)
 @click.option('--force-verify', is_flag=True)
-@click.option('--no-bin', is_flag=True)
-def install(packages, download, outdated, dry_run, delete_tmp, delete_files, quiet, veryquiet, args, verify, force_verify, no_bin):
+@click.option('--portable', is_flag=True)
+def install(packages, download, outdated, dry_run, delete_tmp, delete_files, quiet, veryquiet, args, verify, force_verify, portable):
     print('By installing you accept licenses for the packages.\n')
     if veryquiet:
         quiet = True
@@ -255,7 +268,7 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
                         os.system(f'echo {app.command} >> {script}')
             else:
                 app.install(veryquiet, verify, force_verify,
-                            delete_tmp, delete_files, no_bin)
+                            delete_tmp, delete_files, portable)
 
 
 @cli.command()
