@@ -20,7 +20,7 @@ setup(
         "lxml>=4.5.0",
         "beautifulsoup4>=4.6.3",
         "requests>=2.23.0",
-        "click>=7.1.1",
+        "click>=7.0.0",
         "loguru>=0.5.1",
     ],
     entry_points={
