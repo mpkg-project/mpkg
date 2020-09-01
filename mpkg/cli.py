@@ -151,7 +151,7 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
     elif name:
         filename = 'name.json'
         if not delete:
-            values[0] = values[0].lower()
+            values = [v.lower() for v in values]
             if values[0] in [soft['name'] for soft in GetSofts()] or values[0] in GetConfig(filename='name.json', default={}):
                 logger.warning(f'name already exists')
                 return
