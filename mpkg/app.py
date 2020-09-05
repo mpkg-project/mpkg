@@ -162,9 +162,9 @@ class App(object):
         if not file:
             self.command = ''
         elif quiet:
-            self.command = str(file)+' '+data.args
+            self.command = f'"{file}" {data.args}'
         else:
-            self.command = str(file)
+            self.command = f'"{file}"'
 
     def install(self, veryquiet=False, verify=False, force_verify=False, delete_tmp=False, delete_files=False, portable=False):
         if not hasattr(self, 'command'):

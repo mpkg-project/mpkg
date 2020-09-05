@@ -27,7 +27,7 @@ def cli():
 @click.option('-j', '--jobs', default=10, help=_('threads'))
 @click.option('--sync/--no-sync', default=True, help=_('sync source files'))
 @click.option('-l', '--changelog', is_flag=True)
-@click.option('--use-cache', is_flag=True)
+@click.option('-c', '--use-cache', is_flag=True)
 def sync(jobs, sync, changelog, use_cache):
     if proxy:
         print(f'using proxy: {proxy}\n')
@@ -313,17 +313,23 @@ def remove(packages):
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('-i', '--installed', is_flag=True)
 @click.option('-A', '--all', is_flag=True)
-def show(packages, outdated, installed, all):
-    if installed:
-        pkgs = GetConfig(filename='installed.json')
-        pprint(sorted(list(pkgs.keys())), compact=True)
-    elif outdated:
-        pprint(sorted(list(GetOutdated().keys())), compact=True)
-    elif packages:
+@click.option('pflag', '-pp', '--pprint', is_flag=True)
+def show(packages, outdated, installed, all, pflag):
+    if packages:
         pprint(sorted(Names2Softs(packages),
                       key=lambda x: x.get('name')), compact=True)
-    elif all:
-        pprint(sorted([soft['name'] for soft in GetSofts()]), compact=True)
+    else:
+        if installed:
+            names = sorted(list(GetConfig(filename='installed.json').keys()))
+        elif outdated:
+            names = sorted(list(GetOutdated().keys()))
+        elif all:
+            names = sorted([soft['name'] for soft in GetSofts()])
+        if pflag:
+            pprint(names, compact=True)
+        else:
+            for name in names:
+                print(name)
 
 
 @cli.command()
@@ -336,13 +342,24 @@ def alias(name, value, delete):
 
 @cli.command()
 @click.argument('strings', nargs=-1)
-def search(strings):
+@click.option('-n', '--name', is_flag=True)
+@click.option('pflag', '-pp', '--pprint', is_flag=True)
+def search(strings, name, pflag):
     strings = [s.lower() for s in strings]
+    names = []
     for soft in GetSofts():
-        result = [1 for string in strings if string in soft['name'].lower()
-                  or string in soft.get('description', '').lower()]
-        if sum(result) == len(strings):
-            print(soft['name'])
+        if name:
+            score = [1 for string in strings if string in soft['name'].lower()]
+        else:
+            score = [1 for string in strings if string in soft['name'].lower()
+                     or string in soft.get('description', '').lower()]
+        if sum(score) == len(strings):
+            if pflag:
+                names.append(soft['name'])
+            else:
+                print(soft['name'])
+    if pflag:
+        pprint(names, compact=True)
 
 
 if __name__ == "__main__":

@@ -181,7 +181,8 @@ def Name(softs):
         soft['name'] = soft['name'].lower()
         names.append(soft['name'])
     if len(names) != len(set(names)):
-        logger.warning(f'name conflict\n{names}')
+        logger.warning(
+            f'name conflict\n{[n for n in names if names.count(n)!=1]}')
 
 
 def PreInstall():
