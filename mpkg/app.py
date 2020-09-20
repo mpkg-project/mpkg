@@ -19,18 +19,26 @@ ARCH = architecture()[0]
 
 
 def Linking(name, value='', delete=False):
+    if not value and not delete:
+        return
     bin_dir = Path(GetConfig('bin_dir'))
-    if os.name == 'nt':
-        batfile = bin_dir / (name+'.bat')
-        if delete:
+    batfile = bin_dir / (name+'.bat')
+    cmd = GetConfig('alias_command')
+    if delete:
+        if cmd:
+            print('cannot delete '+name)
+        elif os.name == 'nt':
             if batfile.exists():
                 batfile.unlink()
-            return
-        elif not value:
-            return
+            else:
+                print(f"{name} dosen't exist")
+    else:
         print(_('linking {0} => {1}').format(value, name))
-        os.system('echo @echo off>{0}'.format(batfile))
-        os.system('echo {0} %*>>{1}'.format(value, batfile))
+        if cmd:
+            os.system(cmd.format(name=name, value=value))
+        elif os.name == 'nt':
+            os.system('echo @echo off>{0}'.format(batfile))
+            os.system('echo "{0}" %*>>{1}'.format(value, batfile))
 
 
 def ToLink(links: list):
@@ -89,7 +97,6 @@ def InstallPortable(filepath, soft, delete):
                 strlist.append('')
             target = root / strlist[1]
             args = '|'.join(strlist[2:])
-            args = ' '+args if args else ''
             cmd = GetConfig('shortcut_command')
             if cmd and target.is_file():
                 name = strlist[0] if strlist[0] else target.name.split('.')[0]
@@ -101,12 +108,13 @@ def InstallPortable(filepath, soft, delete):
         binfile = root / file
         if binfile.is_file():
             cmd = GetConfig('link_command')
+            name = alias if alias else binfile.name.split('.')[0]
+            value = str(binfile)+' '+args if args else binfile
             if not cmd:
-                name = alias if alias else binfile.name.split('.')[0]
-                value = str(binfile)+args if args else binfile
                 Linking(name, value)
             else:
-                os.system(cmd.format(name=name, binfile=binfile))
+                os.system(cmd.format(name=name, value=value,
+                                     binfile=binfile, args=args))
     return root
 
 

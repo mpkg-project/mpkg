@@ -312,9 +312,9 @@ def remove(packages):
 @click.argument('packages', nargs=-1)
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('-i', '--installed', is_flag=True)
-@click.option('-A', '--all', is_flag=True)
+@click.option('Aflag', '-A', '--all', is_flag=True)
 @click.option('pflag', '-pp', '--pprint', is_flag=True)
-def show(packages, outdated, installed, all, pflag):
+def show(packages, outdated, installed, Aflag, pflag):
     if packages:
         pprint(sorted(Names2Softs(packages),
                       key=lambda x: x.get('name')), compact=True)
@@ -323,7 +323,7 @@ def show(packages, outdated, installed, all, pflag):
             names = sorted(list(GetConfig(filename='installed.json').keys()))
         elif outdated:
             names = sorted(list(GetOutdated().keys()))
-        elif all:
+        elif Aflag:
             names = sorted([soft['name'] for soft in GetSofts()])
         if pflag:
             pprint(names, compact=True)
