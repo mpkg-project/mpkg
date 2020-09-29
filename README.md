@@ -1,4 +1,6 @@
 # mpkg
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmpkg-project%2Fmpkg.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmpkg-project%2Fmpkg?ref=badge_shield)
+
 
 mpkg 主要用于下载最新的软件，对安装软件的支持不佳，默认非静默安装。
 
@@ -116,3 +118,7 @@ mpkg set --root id dir
 mpkg set --args id string
 # 该 id 所对应的软件在 install -q 时会使用此参数
 ```
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fmpkg-project%2Fmpkg.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fmpkg-project%2Fmpkg?ref=badge_large)
