@@ -4,8 +4,9 @@ import re
 from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(here, 'mpkg', '__init__.py'), 'r', encoding='utf-8') as f:
-    __version__ = re.search("__version__.*'([\\d.]+)'", f.read()).groups()[0]
+with open(os.path.join(here, 'mpkg', '__init__.py'), 'rb') as f:
+    __version__ = re.search(
+        "__version__.*'([\\d.]+)'", f.read().decode('utf-8')).groups()[0]
 
 setup(
     name="mpkg",
@@ -22,6 +23,7 @@ setup(
         "requests>=2.23.0",
         "click>=7.0.0",
         "loguru>=0.5.1",
+        "tenacity>=6.0.0",
     ],
     entry_points={
         "console_scripts": [

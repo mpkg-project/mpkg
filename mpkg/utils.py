@@ -12,8 +12,9 @@ from pathlib import Path
 from urllib.parse import unquote
 
 import click
-from loguru import logger
 import requests
+from loguru import logger
+from tenacity import Retrying, stop_after_attempt, wait_fixed
 
 from .config import HOME, GetConfig, SetConfig
 
@@ -25,11 +26,24 @@ logger.remove()
 level = 'DEBUG' if GetConfig('debug') == 'yes' else 'INFO'
 logger.add(sys.stderr, colorize=True,
            format='<level>{level: <8}</level> | <cyan>{function}</cyan> - <level>{message}</level>', level=level)
-ua = GetConfig('UA')
+
 DefaultUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101'
-UA = DefaultUA if not ua else ua
-timeout = GetConfig('timeout')
-timeout = float(timeout) if timeout else 5
+UA = GetConfig('UA', default=DefaultUA)
+
+timeout = float(GetConfig('timeout', default='5'))
+retry_attempts = int(GetConfig('retry_attempts', default='3'))
+
+
+def retry(func_name=''):
+    def before_log(func_name):
+        def retry_log(retry_state):
+            fnname = func_name if func_name else retry_state.fn.__name__
+            if retry_state.attempt_number != 1:
+                logger.info(
+                    f"starting call to '{fnname}' (try: {retry_state.attempt_number})")
+        return retry_log
+    return Retrying(before=before_log(func_name), stop=stop_after_attempt(retry_attempts),
+                    wait=wait_fixed(3)).wraps
 
 
 def Hash(filepath, algo='sha256'):
@@ -55,6 +69,7 @@ def Redirect(url: str) -> str:
     return url
 
 
+@retry('GetPage')
 @lru_cache()
 def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True, tojson=False) -> str:
     if redirect:
@@ -69,6 +84,7 @@ def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True, tojson=F
     return result
 
 
+@retry()
 def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='', redirect=True, timeout=timeout):
     UA = 'Wget/1.20.3 (mingw32)' if UA == DefaultUA else UA
     if not url.startswith('http'):

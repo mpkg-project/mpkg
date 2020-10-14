@@ -28,13 +28,14 @@ def cli():
 @click.option('--sync/--no-sync', default=True, help=_('sync source files'))
 @click.option('-l', '--changelog', is_flag=True)
 @click.option('-c', '--use-cache', is_flag=True)
-def sync(jobs, sync, changelog, use_cache):
+@click.option('--reverse', is_flag=True)
+def sync(jobs, sync, changelog, use_cache, reverse):
     if proxy:
         print(f'using proxy: {proxy}\n')
     softs = GetSofts(jobs, sync, use_cache=use_cache)
     names = [soft['name'] for soft in softs]
     outdated = sorted(list(GetOutdated().items()),
-                      key=lambda x: x[1][0], reverse=True)
+                      key=lambda x: x[1][0], reverse=reverse)
     if len(outdated) == 0:
         print(_('Already up to date.'))
     else:
@@ -162,7 +163,7 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
     if delete:
         values = []
         if not GetConfig(key, filename=filename):
-            logger.warning(f'invalid key')
+            logger.warning('invalid key')
     if isdict:
         values = [{values[i]: values[i+1]} for i in range(0, len(values), 2)]
     if add:
@@ -315,12 +316,17 @@ def remove(packages):
 @click.option('Aflag', '-A', '--all', is_flag=True)
 @click.option('pflag', '-pp', '--pprint', is_flag=True)
 def show(packages, outdated, installed, Aflag, pflag):
-    if packages:
+    if packages and not installed:
         pprint(sorted(Names2Softs(packages),
                       key=lambda x: x.get('name')), compact=True)
     else:
         if installed:
-            names = sorted(list(GetConfig(filename='installed.json').keys()))
+            iDict = GetConfig(filename='installed.json')
+            names = sorted(list(iDict.keys()))
+            if packages:
+                for name in packages:
+                    print(f'{name}|{iDict[name]}')
+                return
         elif outdated:
             names = sorted(list(GetOutdated().keys()))
         elif Aflag:
