@@ -324,7 +324,8 @@ def show(packages, outdated, installed, Aflag, pflag):
             iDict = GetConfig(filename='installed.json')
             names = sorted(list(iDict.keys()))
             if packages:
-                for name in packages:
+                for soft in Names2Softs(packages, softs=[{'name': n} for n in names]):
+                    name = soft['name']
                     print(f'{name}|{iDict[name]}')
                 return
         elif outdated:

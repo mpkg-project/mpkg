@@ -230,6 +230,8 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
     softs_ = GetConfig('softs', filename='softs.json')
     if softs_ and use_cache:
         return softs_
+    if not GetConfig('sources'):
+        return []
 
     with Pool(jobs) as p:
         items = [x for x in p.map(lambda x:Load(
@@ -280,7 +282,7 @@ def GetOutdated():
     return outdated
 
 
-def Names2Softs(names: list, softs=False):
+def Names2Softs(names: list, softs=None):
     names = [name.lower() for name in names]
     patterns = [re.compile('^{0}$'.format(name.replace('*', '.*')))
                 for name in names if '*' in name]
@@ -293,5 +295,5 @@ def Names2Softs(names: list, softs=False):
             return True
 
     if not softs:
-        softs_all = GetSofts()
-    return [soft for soft in softs_all if match(soft['name'].lower())]
+        softs = GetSofts()
+    return [soft for soft in softs if match(soft['name'].lower())]
