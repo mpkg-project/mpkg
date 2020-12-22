@@ -174,7 +174,7 @@ class App(object):
         else:
             self.command = f'"{file}"'
 
-    def install(self, veryquiet=False, verify=False, force_verify=False, delete_tmp=False, delete_files=False, portable=False):
+    def install(self, veryquiet=False, verify=False, force_verify=False, delete_downloaded=False, delete_installed=False, portable=False):
         if not hasattr(self, 'command'):
             self.install_prepare()
         data = self.data
@@ -184,7 +184,7 @@ class App(object):
         if self.apps:
             for app in self.apps:
                 app.install(veryquiet, verify, force_verify,
-                            delete_tmp, delete_files)
+                            delete_downloaded, delete_installed)
         if force_verify:
             verify = True
         if veryquiet and not data.args:
@@ -201,7 +201,7 @@ class App(object):
         if data.bin:
             if GetConfig('allow_portable') == 'yes':
                 root = InstallPortable(
-                    file, data.asdict(), delete_files)
+                    file, data.asdict(), delete_installed)
                 if data.cmd.get('end'):
                     Execute(data.cmd['end'].format(root=root, file=str(file)))
                 self.dry_run()
@@ -227,7 +227,8 @@ class App(object):
                     passed = True
             if verify and not passed:
                 print(_('verification failed'))
-        if delete_tmp and file:
+        if delete_downloaded and file:
+            logger.debug(f'delete {file}')
             file.unlink()
 
     def extract(self, with_ver=False):

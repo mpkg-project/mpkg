@@ -6,6 +6,7 @@ import importlib
 import json
 import os
 import re
+import tempfile
 import time
 from multiprocessing.dummy import Pool
 from pathlib import Path
@@ -40,17 +41,20 @@ def Configurate(path: str):
         pkg.config()
 
 
-def Save(source: str, ver=-1, sync=True, check_ver=True):
+def Save(source: str, ver=-1, sync=True, check_ver=True, temporary=False):
     latest = False  # old source is not latest
     name = ''
     if '->' in source:
         source, name = source.split('->')
 
-    def download(url, name, verattr, filetype, sync, check_ver):
+    def download(url, name, verattr, filetype, sync, check_ver, temporary):
         latest = False
+        if temporary:
+            check_ver = False
         filename = url.split('/')[-1] if not name else name
-        abspath = HOME / filetype
-        filepath = HOME / filetype / filename
+        home = Path(tempfile.mkdtemp()) if temporary else HOME
+        abspath = home / filetype
+        filepath = home / filetype / filename
         if sync:
             if not check_ver:
                 Download(url, directory=abspath, filename=filename)
@@ -75,13 +79,13 @@ def Save(source: str, ver=-1, sync=True, check_ver=True):
     if source.startswith('http'):
         if source.endswith('.py'):
             filepath, latest = download(
-                source, name, ver, 'py', sync, check_ver)
+                source, name, ver, 'py', sync, check_ver, temporary)
         elif source.endswith('.json'):
             filepath, latest = download(
-                source, name, ver, 'json', sync, check_ver)
+                source, name, ver, 'json', sync, check_ver, temporary)
         elif source.endswith('.zip'):
             filepath, latest = download(
-                source, name, ver, 'zip', sync, check_ver)
+                source, name, ver, 'zip', sync, check_ver, temporary)
     else:
         filepath = source
     return filepath, latest
@@ -103,14 +107,14 @@ def LoadZip(filepath, latest=False, installed=True):
     return [Load(file, installed=installed) for file in files]
 
 
-def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True):
+def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True, temporary=False):
     logger.debug(f'loading {source}')
     if not GetConfig('unsafe') == 'yes' and not source.split('.')[-1] in ['latest', 'nightly', 'json']:
         return [], '.json'
     if not installed:
         sync = True
     if source.endswith('.py'):
-        filepath = Save(source, ver, sync, check_ver)[0]
+        filepath = Save(source, ver, sync, check_ver, temporary)[0]
         pkg = LoadFile(filepath)
         if pkg.needConfig and not installed:
             Configurate(filepath)
@@ -127,11 +131,11 @@ def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True
             pkgs = [pkg]
         return pkgs, '.py'
     elif source.endswith('.json'):
-        filepath = Save(source, ver, sync, check_ver)[0]
+        filepath = Save(source, ver, sync, check_ver, temporary)[0]
         with open(filepath, 'r', encoding="utf8") as f:
             return json.load(f)['packages'], '.json'
     elif source.endswith('.zip'):
-        filepath, latest = Save(source, ver, sync, check_ver)
+        filepath, latest = Save(source, ver, sync, check_ver, temporary)
         return LoadZip(filepath, latest, installed), '.zip'
     elif source.endswith('.sources'):
         if source.startswith('http'):

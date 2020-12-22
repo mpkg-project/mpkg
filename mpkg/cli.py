@@ -60,12 +60,13 @@ def sync(jobs, sync, changelog, use_cache, reverse):
 @click.option('--config', is_flag=True)
 @click.option('-i', '--install', is_flag=True)
 @click.option('-d', '--download', is_flag=True)
+@click.option('-t', '--temporary', is_flag=True)
 @click.option('--id')
-def load(file, config, install, download, id):
+def load(file, config, install, download, id, temporary):
     if config:
-        Load(file, installed=False)
+        Load(file, installed=False, temporary=temporary)
         return
-    loaded = Load(file)
+    loaded = Load(file, temporary=temporary)
     if loaded[1] == '.py':
         apps = []
         for pkg in loaded[0]:
@@ -76,6 +77,8 @@ def load(file, config, install, download, id):
     if id:
         apps = [app for app in apps if app.data.id == id]
     for app in apps:
+        if not app.data.ver:
+            logger.warning('invalid ver')
         if install:
             app.install()
         elif download:
@@ -234,15 +237,15 @@ def download(packages, install):
 @click.option('-d', '--download', is_flag=True)
 @click.option('-o', '--outdated', is_flag=True)
 @click.option('--dry-run', is_flag=True)
-@click.option('-del', '--delete-tmp', is_flag=True)
-@click.option('--delete-files', is_flag=True)
+@click.option('-del', '--delete-downloaded', is_flag=True)
+@click.option('--delete-installed', is_flag=True)
 @click.option('-q', '--quiet', is_flag=True)
 @click.option('-qq', '--veryquiet', is_flag=True)
 @click.option('--args')
 @click.option('--verify', is_flag=True)
 @click.option('--force-verify', is_flag=True)
 @click.option('--portable', is_flag=True)
-def install(packages, download, outdated, dry_run, delete_tmp, delete_files, quiet, veryquiet, args, verify, force_verify, portable):
+def install(packages, download, outdated, dry_run, delete_downloaded, delete_installed, quiet, veryquiet, args, verify, force_verify, portable):
     print('By installing you accept licenses for the packages.\n')
     if veryquiet:
         quiet = True
@@ -269,7 +272,7 @@ def install(packages, download, outdated, dry_run, delete_tmp, delete_files, qui
                         os.system(f'echo {app.command} >> {script}')
             else:
                 app.install(veryquiet, verify, force_verify,
-                            delete_tmp, delete_files, portable)
+                            delete_downloaded, delete_installed, portable)
 
 
 @cli.command()

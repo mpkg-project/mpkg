@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import sys
+import tempfile
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import unquote
@@ -34,7 +35,7 @@ timeout = float(GetConfig('timeout', default='5'))
 retry_attempts = int(GetConfig('retry_attempts', default='3'))
 
 
-def retry(func_name=''):
+def retry(func_name='', attempts=retry_attempts):
     def before_log(func_name):
         def retry_log(retry_state):
             fnname = func_name if func_name else retry_state.fn.__name__
@@ -42,7 +43,7 @@ def retry(func_name=''):
                 logger.info(
                     f"starting call to '{fnname}' (try: {retry_state.attempt_number})")
         return retry_log
-    return Retrying(before=before_log(func_name), stop=stop_after_attempt(retry_attempts),
+    return Retrying(before=before_log(func_name), stop=stop_after_attempt(attempts),
                     wait=wait_fixed(3)).wraps
 
 
@@ -93,11 +94,15 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
         url = Redirect(url)
     if not directory:
         directory = GetConfig('download_dir')
+    if not filename:
+        filename = url.split('/')[-1]
+    for rule in GetConfig('saveto', default=[]):
+        ext, dir_ = list(rule.items())[0]
+        if filename.endswith(ext):
+            directory = dir_ if dir_ != 'TEMPDIR' else tempfile.mkdtemp()
     directory = Path(directory)
     if not directory.exists():
         directory.mkdir(parents=True)
-    if not filename:
-        filename = url.split('/')[-1]
     file = directory / filename
     cached = file.parent / (file.name+'.cached')
     if GetConfig('download_cache') == 'yes' and cached.exists():
