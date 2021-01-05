@@ -162,6 +162,9 @@ class App(object):
         data = self.data
         file = self.file
         tmp = GetConfig(data.name, filename='args.json')
+        if GetConfig(data.name, filename='pflag.json') == 1:
+            pinfo = GetConfig(data.name, 'pinfo.json')
+            data.bin = pinfo if pinfo else ['MPKG-PORTABLE']
         if tmp:
             data.args = tmp
         if args:
@@ -174,7 +177,7 @@ class App(object):
         else:
             self.command = f'"{file}"'
 
-    def install(self, veryquiet=False, verify=False, force_verify=False, delete_downloaded=False, delete_installed=False, portable=False):
+    def install(self, veryquiet=False, verify=False, force_verify=False, delete_downloaded=False, delete_installed=False):
         if not hasattr(self, 'command'):
             self.install_prepare()
         data = self.data
@@ -196,8 +199,6 @@ class App(object):
         code = -1
         if data.cmd.get('start'):
             Execute(data.cmd['start'].format(file=str(file)))
-        if portable:
-            data.bin = ['MPKG-PORTABLE']
         if data.bin:
             if GetConfig('allow_portable') == 'yes':
                 root = InstallPortable(
@@ -231,9 +232,10 @@ class App(object):
             logger.debug(f'delete {file}')
             file.unlink()
 
-    def extract(self, with_ver=False):
-        root = GetConfig(self.data.name, filename='xroot.json')
+    def extract(self, with_ver=False, root=None, delete=False):
+        xroot = GetConfig(
+            self.data.name, filename='xroot.json') if not root else root
         if with_ver:
-            Extract(self.file, root, ver=self.data.ver)
+            Extract(self.file, xroot, ver=self.data.ver, delete=delete)
         else:
-            Extract(self.file, root)
+            Extract(self.file, xroot, delete=delete)

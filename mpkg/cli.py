@@ -145,7 +145,8 @@ def config(packages, force, load, delete_all, url_redirect, pre_install):
 @click.option('--args', is_flag=True)
 @click.option('--root', is_flag=True)
 @click.option('--name', is_flag=True)
-def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, notes, args, root, name):
+@click.option('--pinfo', is_flag=True)
+def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, notes, args, root, name, pinfo):
     if notes:
         filename = 'notes.json'
     elif args:
@@ -159,8 +160,10 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
             if values[0] in [soft['name'] for soft in GetSofts()] or values[0] in GetConfig(filename='name.json', default={}):
                 logger.warning(f'name already exists')
                 return
+    elif pinfo:
+        filename = 'pinfo.json'
     else:
-        filename = 'config.json'
+        filename = filename if filename else 'config.json'
     if not GetConfig('sources'):
         PreInstall()
     if delete:
@@ -217,7 +220,7 @@ def get(key, filename, notes, args, root, name):
     elif name:
         filename = 'name.json'
     else:
-        filename = 'config.json'
+        filename = filename if filename else 'config.json'
     pprint(GetConfig(key, filename=filename))
 
 
@@ -244,8 +247,7 @@ def download(packages, install):
 @click.option('--args')
 @click.option('--verify', is_flag=True)
 @click.option('--force-verify', is_flag=True)
-@click.option('--portable', is_flag=True)
-def install(packages, download, outdated, dry_run, delete_downloaded, delete_installed, quiet, veryquiet, args, verify, force_verify, portable):
+def install(packages, download, outdated, dry_run, delete_downloaded, delete_installed, quiet, veryquiet, args, verify, force_verify):
     print('By installing you accept licenses for the packages.\n')
     if veryquiet:
         quiet = True
@@ -272,16 +274,19 @@ def install(packages, download, outdated, dry_run, delete_downloaded, delete_ins
                         os.system(f'echo {app.command} >> {script}')
             else:
                 app.install(veryquiet, verify, force_verify,
-                            delete_downloaded, delete_installed, portable)
+                            delete_downloaded, delete_installed)
 
 
 @cli.command()
 @click.argument('packages', nargs=-1)
+@click.option('--set-pflag', is_flag=True)
 @click.option('--set-root')
+@click.option('-O', '--root')
 @click.option('--with-ver', is_flag=True)
 @click.option('-i', '--install', is_flag=True)
 @click.option('-A', '--all', is_flag=True)
-def extract(packages, install, set_root, with_ver, all):
+@click.option('-del', '--delete-downloaded', is_flag=True)
+def extract(packages, install, set_root, with_ver, all, root, set_pflag, delete_downloaded):
     if all:
         pprint(sorted([soft['name'] for soft in GetSofts()
                        if soft.get('allowExtract') or soft.get('bin')]), compact=True)
@@ -290,12 +295,16 @@ def extract(packages, install, set_root, with_ver, all):
         if set_root:
             SetConfig(softs[0]['name'], set_root, filename='xroot.json')
             return
+        if set_pflag:
+            for soft in softs:
+                SetConfig(soft['name'], 1, filename='pflag.json')
+            return
         apps = [App(soft) for soft in softs]
         DownloadApps(apps)
         for app in apps:
             if install:
                 app.dry_run()
-            app.extract(with_ver)
+            app.extract(with_ver, root, delete_downloaded)
 
 
 @cli.command()
@@ -315,7 +324,7 @@ def remove(packages):
 @cli.command()
 @click.argument('packages', nargs=-1)
 @click.option('-o', '--outdated', is_flag=True)
-@click.option('-i', '--installed', is_flag=True)
+@click.option('-i', '-l', '--installed', '--local', is_flag=True)
 @click.option('Aflag', '-A', '--all', is_flag=True)
 @click.option('pflag', '-pp', '--pprint', is_flag=True)
 def show(packages, outdated, installed, Aflag, pflag):

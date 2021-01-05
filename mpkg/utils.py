@@ -241,7 +241,7 @@ def ReplaceDir(root_src_dir, root_dst_dir):
         shutil.rmtree(root_src_dir)
 
 
-def Extract(filepath, root='', ver=''):
+def Extract(filepath, root='', ver='', delete=False):
     filepath = Path(filepath)
     if not root:
         root = filepath.parent.absolute() / '.'.join(
@@ -264,6 +264,8 @@ def Extract(filepath, root='', ver=''):
     ReplaceDir(str(root_new.absolute()), str(root.absolute()))
     if extract_dir.exists():
         shutil.rmtree(extract_dir)
+    if delete:
+        filepath.unlink()
     return root
 
 
