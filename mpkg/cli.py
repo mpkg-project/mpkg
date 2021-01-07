@@ -227,9 +227,10 @@ def get(key, filename, notes, args, root, name):
 @cli.command()
 @click.argument('packages', nargs=-1, required=True)
 @click.option('-i', '--install', is_flag=True)
-def download(packages, install):
+@click.option('-O', '--root')
+def download(packages, install, root):
     apps = [App(soft) for soft in Names2Softs(packages)]
-    DownloadApps(apps)
+    DownloadApps(apps, root)
     for app in apps:
         if install:
             app.dry_run()
@@ -284,10 +285,10 @@ def install(packages, download, outdated, dry_run, delete_downloaded, delete_ins
 @click.option('-O', '--root')
 @click.option('--with-ver', is_flag=True)
 @click.option('-i', '--install', is_flag=True)
-@click.option('-A', '--all', is_flag=True)
+@click.option('-A', '--show-all', is_flag=True)
 @click.option('-del', '--delete-downloaded', is_flag=True)
-def extract(packages, install, set_root, with_ver, all, root, set_pflag, delete_downloaded):
-    if all:
+def extract(packages, install, set_root, with_ver, show_all, root, set_pflag, delete_downloaded):
+    if show_all:
         pprint(sorted([soft['name'] for soft in GetSofts()
                        if soft.get('allowExtract') or soft.get('bin')]), compact=True)
     elif packages:

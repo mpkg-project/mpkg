@@ -134,7 +134,7 @@ class App(object):
         if not self.data.arch:
             self.data.arch = ToLink(self.data.links)
 
-    def download(self):
+    def download(self, root=None):
         self.download_prepare()
         data = self.data
         if self.apps:
@@ -150,7 +150,8 @@ class App(object):
                 data.sha256 = {ARCH: data.sha256[i]}
             sha256 = data.sha256.get(ARCH) if data.sha256 else ''
             filename = data.name+'_'+data.arch[ARCH].split('/')[-1]
-            file = Download(data.arch[ARCH], sha256=sha256, filename=filename)
+            file = Download(data.arch[ARCH], directory=root,
+                            sha256=sha256, filename=filename)
         self.file = file
 
     def install_prepare(self, args='', quiet=False):
@@ -228,6 +229,13 @@ class App(object):
                     passed = True
             if verify and not passed:
                 print(_('verification failed'))
+        if GetConfig('delete_after_install') == 'yes':
+            delete_downloaded = True
+        for rule in GetConfig('saveto', default=[]):
+            ext, dir_ = list(rule.items())[0]
+            if str(file).endswith(ext):
+                if dir_ == 'TEMPDIR-D':
+                    delete_downloaded = True
         if delete_downloaded and file:
             logger.debug(f'delete {file}')
             file.unlink()

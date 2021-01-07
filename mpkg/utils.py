@@ -99,7 +99,9 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
     for rule in GetConfig('saveto', default=[]):
         ext, dir_ = list(rule.items())[0]
         if filename.endswith(ext):
-            directory = dir_ if dir_ != 'TEMPDIR' else tempfile.mkdtemp()
+            if directory == GetConfig('download_dir'):
+                dir_ = 'TEMPDIR' if dir_ == 'TEMPDIR-D' else dir_
+                directory = dir_ if dir_ != 'TEMPDIR' else tempfile.mkdtemp()
     directory = Path(directory)
     if not directory.exists():
         directory.mkdir(parents=True)
@@ -218,11 +220,11 @@ def PreInstall():
             directory.mkdir(parents=True)
 
 
-def DownloadApps(apps):
+def DownloadApps(apps, root=None):
     for app in apps:
         app.download_prepare()
     for app in apps:
-        app.download()
+        app.download(root)
 
 
 def ReplaceDir(root_src_dir, root_dst_dir):
