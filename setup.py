@@ -4,9 +4,13 @@ import re
 from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
+
 with open(os.path.join(here, 'mpkg', '__init__.py'), 'rb') as f:
     __version__ = re.search(
         "__version__.*'([\\d.]+)'", f.read().decode('utf-8')).groups()[0]
+
+with open(os.path.join(here, 'README.md'), 'rb') as f:
+    readme = f.read().decode('utf-8')
 
 setup(
     name="mpkg",
@@ -14,6 +18,8 @@ setup(
     author="zpcc",
     author_email="zp.c@outlook.com",
     description="A simple package manager.",
+    long_description=readme,
+    long_description_content_type='text/markdown',
     url="https://github.com/mpkg-project/mpkg",
     packages=["mpkg"],
     python_requires=">=3.7",

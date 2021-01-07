@@ -1,22 +1,40 @@
 # mpkg
 
-mpkg 主要用于下载最新的软件，对安装软件的支持不佳，默认非静默安装。
+mpkg 主要用于获取最新的软件。
+
+mpkg 可以通过一个 json 文件保存大量软件信息，也可以调用 python 代码爬取信息。软件信息可以通过同步 json 或通过本地爬取获得，信息同步完成后可在本地查看、搜索或下载软件，不需要调用其他网站的 api。
+
+mpkg 下载软件时不需要管理员权限，调用可执行文件进行安装时可能需要权限，调用时默认不附加静默安装参数。
+
+灵感主要来源于以下项目：
+
+- [Scoop](https://github.com/lukesampson/scoop)
+
+- [chocolatey](https://chocolatey.org/)
 
 ## Demo
 
 ```bash
-#pip install mpkg
+# pip install mpkg
 pip install git+https://github.com/mpkg-project/mpkg.git
 mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/main.json
+# mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/scoop.json
 mpkg sync
 
-mpkg show -A
+mpkg show -A --pprint
 # ['7zip', 'IntelWirelessDriver.admin', 'TrafficMonitor.install', ...]
 mpkg show 7zip
 mpkg install 7zip
+mpkg download mpkg.download --root .
 ```
 
-## 说明
+## 安装
+
+如果已安装 python3.7（或更高版本），执行 `pip install mpkg` 即可安装。[Releases](https://github.com/mpkg-project/mpkg/releases) 页面提供了用 pyinstaller 打包好的程序，但可能有未知 bug。
+
+如果想尝试最新版本，可通过 `pip install git+https://github.com/mpkg-project/mpkg.git` 安装 git 仓库中的版本，且对应的已打包程序可在 [此处](https://ci.appveyor.com/project/zpcc/mpkg/) 找到。
+
+## 配置
 
 初次使用时执行`mpkg config`设置软件源，也可通过`mpkg set --add sources "url"`进行设置。
 
@@ -48,6 +66,7 @@ mpkg install 7zip
   # 可选，在程序安装前后调用
   'id': 'TrafficMonitor.install',
   'ver': '1.79.1'}]
+# 参见：https://github.com/mpkg-bot/mpkg-history/tree/master/main
 ```
 
 ### 重要选项
@@ -62,7 +81,7 @@ mpkg install 7zip
 
 若软件需要调用 cmd 命令（如 TrafficMonitor.install），则需要执行`mpkg set allow_cmd yes`，否则会输出`skip command(...)`。在调用 cmd 命令时会要求输入 y 进行确认，可通过执行 `mpkg set no_confirmation yes` 跳过确认。
 
-#### mpkg set shortcut_command ...
+#### mpkg set shortcut_command "cmd"
 
 mpkg 不支持创建快捷方式，但可通过调用命令的方式实现。若未设置此项，需要创建快捷方式时会出现`no shortcut for ...`的 warning，下面给出一种调用示例（若无特殊情况，快捷方式一般只需创建一次，因而也可手动创建快捷方式并忽略此设置）。
 
@@ -71,9 +90,13 @@ rem 需要修改 C:\DESKTOP 为桌面文件夹所在路径
 mpkg set shortcut_command "mshta VBScript:Execute(\"Set a=CreateObject(\"\"WScript.Shell\"\"):Set b=a.CreateShortcut(\"\"C:\DESKTOP\{name}.lnk\"\"):b.TargetPath=\"\"{target}\"\":b.Arguments =\"\"{args}\"\":b.WorkingDirectory=\"\"{root}\"\":b.Save:close\")"
 ```
 
-#### mpkg set link_command ...
+#### mpkg set link_command "cmd"
 
 mpkg 可以通过创建 bat 的方式调用命令（如 curl, wget, adb 等），但需要手动加入`%USERPROFILE%\.config\mpkg\bin`（也可通过 `mpkg get bin_dir` 查看目录位置）至 PATH 环境变量中。可以忽略对 link_command 的设置。
+
+```cmd
+mpkg set link_command "shimgen -p=\"{binfile}\" -o=\"%USERPROFILE%\.config\mpkg\bin\{name}.exe\" -c=\"{args}\""
+```
 
 ### 杂项
 
@@ -84,6 +107,9 @@ mpkg set debug yes
 mpkg set download_cache yes
 # 执行后，若下载文件所在目录存在文件名后加 .cached 的文件，则跳过该文件的下载
 
+mpkg set delete_after_install yes
+# 执行后，在安装完软件后会删除安装包
+
 mpkg set proxy username:password@https://example.com:8081
 mpkg set proxy http://127.0.0.1:1081
 # 执行后会使用代理进行页面请求与软件下载，仅支持http与https代理
@@ -91,11 +117,17 @@ mpkg set proxy http://127.0.0.1:1081
 mpkg set redirect --add --dict "^https?://github.com/(.*)/raw/master/(.*)" https://cdn.jsdelivr.net/gh/{0}@master/{1}
 # 执行后，进行页面请求与软件下载会重定向网站，语法同正则表达式
 
+mpkg set saveto --add --dict ".msi" "TEMPDIR-D"
+# 执行后，后缀为 .msi 的文件在下载时会保存至所输入目录，TEMPDIR-D 代表自动生成一个临时目录，且在安装后删除，输入 TEMPDIR 则不自动删除
+
 mpkg set UA "..."
 # 执行后，进行页面请求与软件下载时会使用此UA。修改后可能出问题，使用 mpkg set UA --delete 还原
 
 mpkg set timeout 6
 # 执行后，请求超时时间修改为6秒（默认为5秒）
+
+mpkg set retry_attempts 5
+# 执行后，请求失败后重试次数修改为5次（默认为3）
 
 mpkg set files_dir ...
 # portable 类型的软件会解压至此目录，默认为 %USERPROFILE%\.config\mpkg\files
@@ -115,4 +147,7 @@ mpkg set --root id dir
 
 mpkg set --args id string
 # 该 id 所对应的软件在 install -q 时会使用此参数
+
+mpkg set --name name string
+# 用 string 替换 name，可以用于简化命名
 ```
