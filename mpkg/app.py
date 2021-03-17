@@ -16,7 +16,7 @@ from .utils import Download, Extract, Selected, logger
 
 _ = gettext.gettext
 ARCH = architecture()[0]
-BIN_DIR = Path(GetConfig('bin_dir'))
+BIN_DIR = Path(GetConfig('bin_dir', default='.'))
 
 
 def Linking(name, value='', delete=False):
