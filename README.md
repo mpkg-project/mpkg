@@ -98,6 +98,12 @@ mpkg 可以通过创建 bat 的方式调用命令（如 curl, wget, adb 等）�
 mpkg set link_command "shimgen -p=\"{binfile}\" -o=\"%USERPROFILE%\.config\mpkg\bin\{name}.exe\" -c=\"{args}\""
 ```
 
+#### mpkg set shimexe "path"
+
+```cmd
+mpkg set shimexe "D:\shimexe.exe"
+```
+
 ### 杂项
 
 ```bash

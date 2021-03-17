@@ -16,17 +16,21 @@ from .utils import Download, Extract, Selected, logger
 
 _ = gettext.gettext
 ARCH = architecture()[0]
+BIN_DIR = Path(GetConfig('bin_dir'))
 
 
 def Linking(name, value='', delete=False):
     if not value and not delete:
         return
-    bin_dir = Path(GetConfig('bin_dir'))
-    batfile = bin_dir / (name+'.bat')
+    batfile = BIN_DIR / (name+'.bat')
     cmd = GetConfig('alias_command')
     if delete:
         if cmd:
-            print('cannot delete '+name)
+            cmd = GetConfig('alias_command_delete')
+            if cmd:
+                os.system(cmd.format(name=name))
+            else:
+                print('cannot delete '+name)
         elif os.name == 'nt':
             if batfile.exists():
                 batfile.unlink()
@@ -107,14 +111,22 @@ def InstallPortable(filepath, soft, delete):
             continue
         binfile = root / file
         if binfile.is_file():
+            shimexe = GetConfig('shimexe')
             cmd = GetConfig('link_command')
             name = alias if alias else binfile.name.split('.')[0]
             value = str(binfile)+' '+args if args else binfile
-            if not cmd:
-                Linking(name, value)
-            else:
+            if shimexe:
+                print(_('creating shim for {0}').format(name))
+                shutil.copy(shimexe, str(BIN_DIR / (name + '.exe')))
+                with open(str(BIN_DIR / (name + '.shim')), 'wb') as f:
+                    txt = f'path = {str(binfile.absolute())}\r\nargs = {args}'.encode(
+                        'utf-8')
+                    f.write(txt)
+            elif cmd:
                 os.system(cmd.format(name=name, value=value,
                                      binfile=binfile, args=args))
+            else:
+                Linking(name, value)
     return root
 
 
