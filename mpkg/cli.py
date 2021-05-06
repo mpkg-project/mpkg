@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
+import functools
 import gettext
 import os
 from pprint import pprint
@@ -130,6 +131,32 @@ def config(packages, force, load, delete_all, url_redirect, pre_install):
         SetConfig('sources', sources)
 
 
+def filename_params(func):
+    @click.option('--filename')
+    @click.option('--notes', is_flag=True)
+    @click.option('--args', is_flag=True)
+    @click.option('--root', is_flag=True)
+    @click.option('--name', is_flag=True)
+    @click.option('--pinfo', is_flag=True)
+    @functools.wraps(func)
+    def wrapper(filename, notes, args, root, name, pinfo, *args_, **kwargs):
+        if notes:
+            filename = 'notes.json'
+        elif args:
+            filename = 'args.json'
+        elif root:
+            filename = 'root.json'
+        elif name:
+            filename = 'name.json'
+        elif pinfo:
+            filename = 'pinfo.json'
+        else:
+            filename = filename if filename else 'config.json'
+        kwargs['filename'] = filename
+        return func(*args_, **kwargs)
+    return wrapper
+
+
 @cli.command('set')
 @click.argument('key')
 @click.argument('values', nargs=-1)
@@ -138,32 +165,16 @@ def config(packages, force, load, delete_all, url_redirect, pre_install):
 @click.option('--add', is_flag=True)
 @click.option('--delete', is_flag=True)
 @click.option('--test', is_flag=True)
-@click.option('--filename')
 @click.option('--disable', is_flag=True)
 @click.option('--enable', is_flag=True)
-@click.option('--notes', is_flag=True)
-@click.option('--args', is_flag=True)
-@click.option('--root', is_flag=True)
-@click.option('--name', is_flag=True)
-@click.option('--pinfo', is_flag=True)
-def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable, notes, args, root, name, pinfo):
-    if notes:
-        filename = 'notes.json'
-    elif args:
-        filename = 'args.json'
-    elif root:
-        filename = 'root.json'
-    elif name:
-        filename = 'name.json'
+@filename_params
+def set_(key, values, islist, isdict, add, test, delete, filename, disable, enable):
+    if filename == 'name.json':
         if not delete:
             values = [v.lower() for v in values]
             if values[0] in [soft['name'] for soft in GetSofts()] or values[0] in GetConfig(filename='name.json', default={}):
                 logger.warning(f'name already exists')
                 return
-    elif pinfo:
-        filename = 'pinfo.json'
-    else:
-        filename = filename if filename else 'config.json'
     if not GetConfig('sources'):
         PreInstall()
     if delete:
@@ -205,22 +216,8 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
 
 @cli.command()
 @click.argument('key', required=False)
-@click.option('--filename')
-@click.option('--notes', is_flag=True)
-@click.option('--args', is_flag=True)
-@click.option('--root', is_flag=True)
-@click.option('--name', is_flag=True)
-def get(key, filename, notes, args, root, name):
-    if notes:
-        filename = 'notes.json'
-    elif args:
-        filename = 'args.json'
-    elif root:
-        filename = 'root.json'
-    elif name:
-        filename = 'name.json'
-    else:
-        filename = filename if filename else 'config.json'
+@filename_params
+def get(key, filename):
     pprint(GetConfig(key, filename=filename))
 
 
