@@ -136,18 +136,24 @@ def filename_params(func):
     @click.option('--notes', is_flag=True)
     @click.option('--args', is_flag=True)
     @click.option('--root', is_flag=True)
+    @click.option('--xroot', is_flag=True)
     @click.option('--name', is_flag=True)
+    @click.option('--pflag', is_flag=True)
     @click.option('--pinfo', is_flag=True)
     @functools.wraps(func)
-    def wrapper(filename, notes, args, root, name, pinfo, *args_, **kwargs):
+    def wrapper(filename, notes, args, root, xroot, name, pflag, pinfo, *args_, **kwargs):
         if notes:
             filename = 'notes.json'
         elif args:
             filename = 'args.json'
         elif root:
             filename = 'root.json'
+        elif xroot:
+            filename = 'xroot.json'
         elif name:
             filename = 'name.json'
+        elif pflag:
+            filename = 'pflag.json'
         elif pinfo:
             filename = 'pinfo.json'
         else:
@@ -221,22 +227,46 @@ def get(key, filename):
     pprint(GetConfig(key, filename=filename))
 
 
+def apps_params(func):
+    def name_handler(names, outdated=False):
+        softs = Names2Softs(names)
+        if outdated:
+            softs = Names2Softs(list(GetOutdated().keys()))
+        apps = [App(soft) for soft in softs]
+        return apps
+
+    @click.argument('packages', nargs=-1)
+    @click.option('-o', '--outdated', is_flag=True)
+    @functools.wraps(func)
+    def wrapper(packages, outdated, *args_, **kwargs):
+        apps = name_handler(packages, outdated)
+        if not apps:
+            print("Missing argument 'PACKAGES...'")
+            exit()
+        return func(apps, *args_, **kwargs)
+    return wrapper
+
+
 @cli.command()
-@click.argument('packages', nargs=-1, required=True)
+@apps_params
 @click.option('-i', '--install', is_flag=True)
 @click.option('-O', '--root')
-def download(packages, install, root):
-    apps = [App(soft) for soft in Names2Softs(packages)]
+@click.option('-s', '--generate-scripts', is_flag=True)
+def download(apps, install, root, generate_scripts):
     DownloadApps(apps, root)
     for app in apps:
+        if generate_scripts:
+            if app.file:
+                app.install_prepare(quiet=True)
+                if os.name == 'nt':
+                    script = app.file.parent / 'install.bat'
+                    os.system(f'echo {app.command} >> {script}')
         if install:
             app.dry_run()
 
 
 @cli.command()
-@click.argument('packages', nargs=-1)
-@click.option('-d', '--download', is_flag=True)
-@click.option('-o', '--outdated', is_flag=True)
+@apps_params
 @click.option('--dry-run', is_flag=True)
 @click.option('-del', '--delete-downloaded', is_flag=True)
 @click.option('--delete-installed', is_flag=True)
@@ -245,18 +275,10 @@ def download(packages, install, root):
 @click.option('--args')
 @click.option('--verify', is_flag=True)
 @click.option('--force-verify', is_flag=True)
-def install(packages, download, outdated, dry_run, delete_downloaded, delete_installed, quiet, veryquiet, args, verify, force_verify):
+def install(apps, dry_run, delete_downloaded, delete_installed, quiet, veryquiet, args, verify, force_verify):
     print('By installing you accept licenses for the packages.\n')
     if veryquiet:
         quiet = True
-    if packages:
-        softs = Names2Softs(packages)
-    elif outdated:
-        softs = Names2Softs(list(GetOutdated().keys()))
-    else:
-        print(install.get_help(click.core.Context(install)))
-        return
-    apps = [App(soft) for soft in softs]
     if dry_run:
         for app in apps:
             app.dry_run()
@@ -264,45 +286,22 @@ def install(packages, download, outdated, dry_run, delete_downloaded, delete_ins
         DownloadApps(apps)
         for app in apps:
             app.install_prepare(args, quiet)
-            if download:
-                if app.file:
-                    app.dry_run()
-                    if os.name == 'nt':
-                        script = app.file.parent / 'install.bat'
-                        os.system(f'echo {app.command} >> {script}')
-            else:
-                app.install(veryquiet, verify, force_verify,
-                            delete_downloaded, delete_installed)
+            app.install(veryquiet, verify, force_verify,
+                        delete_downloaded, delete_installed)
 
 
 @cli.command()
-@click.argument('packages', nargs=-1)
-@click.option('--set-pflag', is_flag=True)
-@click.option('--set-root')
+@apps_params
 @click.option('-O', '--root')
 @click.option('--with-ver', is_flag=True)
 @click.option('-i', '--install', is_flag=True)
-@click.option('-A', '--show-all', is_flag=True)
 @click.option('-del', '--delete-downloaded', is_flag=True)
-def extract(packages, install, set_root, with_ver, show_all, root, set_pflag, delete_downloaded):
-    if show_all:
-        pprint(sorted([soft['name'] for soft in GetSofts()
-                       if soft.get('allowExtract') or soft.get('bin')]), compact=True)
-    elif packages:
-        softs = Names2Softs(packages)
-        if set_root:
-            SetConfig(softs[0]['name'], set_root, filename='xroot.json')
-            return
-        if set_pflag:
-            for soft in softs:
-                SetConfig(soft['name'], 1, filename='pflag.json')
-            return
-        apps = [App(soft) for soft in softs]
-        DownloadApps(apps)
-        for app in apps:
-            if install:
-                app.dry_run()
-            app.extract(with_ver, root, delete_downloaded)
+def extract(apps, install, with_ver, root, delete_downloaded):
+    DownloadApps(apps)
+    for app in apps:
+        if install:
+            app.dry_run()
+        app.extract(with_ver, root, delete_downloaded)
 
 
 @cli.command()
@@ -321,32 +320,40 @@ def remove(packages):
 
 @cli.command()
 @click.argument('packages', nargs=-1)
-@click.option('-o', '--outdated', is_flag=True)
+@click.option('-o', '--outdated', '--upgradeable', is_flag=True)
+@click.option('-e', '--extractable', is_flag=True)
 @click.option('-i', '-l', '--installed', '--local', is_flag=True)
-@click.option('Aflag', '-A', '--all', is_flag=True)
-@click.option('pflag', '-pp', '--pprint', is_flag=True)
-def show(packages, outdated, installed, Aflag, pflag):
-    if packages and not installed:
-        pprint(sorted(Names2Softs(packages),
-                      key=lambda x: x.get('name')), compact=True)
-    else:
+@click.option('show_all', '-A', '--all', is_flag=True)
+@click.option('-p', '--pretty', '--pprint', is_flag=True)
+def show(packages, outdated, installed, show_all, pretty, extractable):
+    names = []
+    if installed:
+        iDict = GetConfig(filename='installed.json')
+        names = sorted(list(iDict.keys()))
+    if packages:
         if installed:
-            iDict = GetConfig(filename='installed.json')
-            names = sorted(list(iDict.keys()))
-            if packages:
-                for soft in Names2Softs(packages, softs=[{'name': n} for n in names]):
-                    name = soft['name']
-                    print(f'{name}|{iDict[name]}')
-                return
+            for soft in Names2Softs(packages, softs=[{'name': n} for n in names]):
+                name = soft['name']
+                print(f'{name}|{iDict[name]}')
+        else:
+            pprint(sorted(Names2Softs(packages),
+                          key=lambda x: x.get('name')), compact=True)
+        return
+    else:
+        if extractable:
+            names = sorted([soft['name'] for soft in GetSofts()
+                            if soft.get('allowExtract') or soft.get('bin')])
         elif outdated:
             names = sorted(list(GetOutdated().keys()))
-        elif Aflag:
+        elif show_all:
             names = sorted([soft['name'] for soft in GetSofts()])
-        if pflag:
-            pprint(names, compact=True)
-        else:
-            for name in names:
-                print(name)
+    if pretty:
+        pprint(names, compact=True)
+    elif names:
+        for name in names:
+            print(name)
+    else:
+        print(show.get_help(click.core.Context(show)))
 
 
 @cli.command()
@@ -358,25 +365,25 @@ def alias(name, value, delete):
 
 
 @cli.command()
-@click.argument('strings', nargs=-1)
-@click.option('-n', '--name', is_flag=True)
-@click.option('pflag', '-pp', '--pprint', is_flag=True)
-def search(strings, name, pflag):
-    strings = [s.lower() for s in strings]
-    names = []
+@click.argument('words', nargs=-1, required=True)
+@click.option('-n', '--name-only', is_flag=True)
+@click.option('pretty', '-pp', '--pprint', is_flag=True)
+def search(words, name_only, pretty):
+    words = [w.lower() for w in words]
+    result = []
     for soft in GetSofts():
-        if name:
-            score = [1 for string in strings if string in soft['name'].lower()]
+        if name_only:
+            score = [1 for w in words if w in soft['name'].lower()]
         else:
-            score = [1 for string in strings if string in soft['name'].lower()
-                     or string in soft.get('description', '').lower()]
-        if sum(score) == len(strings):
-            if pflag:
-                names.append(soft['name'])
+            score = [1 for w in words if w in soft['name'].lower()
+                     or w in soft.get('description', '').lower()]
+        if sum(score) == len(words):
+            if pretty:
+                result.append(soft['name'])
             else:
                 print(soft['name'])
-    if pflag:
-        pprint(names, compact=True)
+    if pretty:
+        pprint(result, compact=True)
 
 
 if __name__ == "__main__":
