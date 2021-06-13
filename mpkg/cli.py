@@ -237,12 +237,17 @@ def apps_params(func):
 
     @click.argument('packages', nargs=-1)
     @click.option('-o', '--outdated', is_flag=True)
+    @click.option('--url')
     @functools.wraps(func)
-    def wrapper(packages, outdated, *args_, **kwargs):
+    def wrapper(packages, outdated, url, *args_, **kwargs):
         apps = name_handler(packages, outdated)
         if not apps:
             print("Missing argument 'PACKAGES...'")
             exit()
+        for app in apps:
+            if url:
+                app.data.arch = {}
+                app.data.links = [url]
         return func(apps, *args_, **kwargs)
     return wrapper
 
@@ -309,10 +314,13 @@ def extract(apps, install, with_ver, root, delete_downloaded):
 def remove(packages):
     packages = [pkg.lower() for pkg in packages]
     if packages:
-        pkgs = GetConfig(filename='installed.json')
-        names = [x for x in list(pkgs.keys()) if x.lower() in packages]
-        for name in names:
-            SetConfig(name, filename='installed.json', delete=True)
+        installed = [k.lower()
+                     for k in list(GetConfig(filename='installed.json').keys())]
+        for name in packages:
+            if name in installed:
+                SetConfig(name, filename='installed.json', delete=True)
+            else:
+                logger.warning(f'cannot find {name}')
     else:
         print(remove.get_help(click.core.Context(remove)))
         return
