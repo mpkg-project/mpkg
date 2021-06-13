@@ -155,6 +155,7 @@ class App(object):
         if not ARCH in data.arch:
             if not self.apps:
                 logger.warning(f'{data.name} has no link available')
+                exit()
             file = ''
         else:
             if isinstance(data.sha256, list):
@@ -175,8 +176,8 @@ class App(object):
         data = self.data
         file = self.file
         tmp = GetConfig(data.name, filename='args.json')
-        if GetConfig(data.name, filename='pflag.json') == 1:
-            pinfo = GetConfig(data.name, 'pinfo.json')
+        if GetConfig(data.name, filename='pflag.json') == "yes":
+            pinfo = GetConfig(data.name, filename='pinfo.json')
             data.bin = pinfo if pinfo else ['MPKG-PORTABLE']
         if tmp:
             data.args = tmp
