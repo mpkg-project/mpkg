@@ -157,3 +157,7 @@ mpkg set --args id string
 mpkg set --name name string
 # 用 string 替换 name，可以用于简化命名
 ```
+
+## Special Thanks
+
+Thank you to [JetBrains](https://www.jetbrains.com/) for providing us with free licenses to their great tools.
