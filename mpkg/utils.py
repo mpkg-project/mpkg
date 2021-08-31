@@ -88,6 +88,7 @@ def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True, tojson=F
 @retry()
 def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='', redirect=True, timeout=timeout):
     UA = 'Wget/1.20.3 (mingw32)' if UA == DefaultUA else UA
+    resume = True if GetConfig('download_resuming') == 'yes' else False
     if not url.startswith('http'):
         return Path(url)
     if redirect:
@@ -122,13 +123,20 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
                 url=url, directory=directory, filename=filename)
         os.system(command)
     else:
+        headers = {'User-Agent': UA}
+        fmode = 'wb'
+        file_size = 0
+        unfinished = file.parent / (file.name+'.unfinished')
+        if resume:
+            if unfinished.exists() and file.exists():
+                fmode = 'ab'
+                file_size = file.stat().st_size
+                logger.debug(f'resuming from {file_size}')
+                headers['Range'] = f'bytes={file_size}-'
+            else:
+                unfinished.touch()
         req = requests.get(url, stream=True, proxies=proxies,
-                           headers={'User-Agent': UA}, timeout=timeout)
-        if req.status_code != 200:
-            logger.warning(f'{req.status_code} error')
-            print(' try to download it with downloader')
-            print('  if you have installed wget')
-            print(r'  try: mpkg set downloader "wget -q -O {filepath} {url}"')
+                           headers=headers, timeout=timeout)
         chunk_size = 2**20
         contents = req.iter_content(chunk_size=chunk_size)
         if 'content-length' in req.headers:
@@ -143,11 +151,33 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
                 label = str(round(length, 1))+'MB'
         else:
             label = ''
-        with click.progressbar(contents, length=length, label=label) as bar:
-            with open(str(file), 'wb') as f:
-                for chunk in bar:
-                    if chunk:
-                        f.write(chunk)
+        if not req.status_code in [200, 206]:
+            if req.status_code == 416:
+                logger.debug(
+                    f"content-length: {req.headers['content-length']}")
+                req2 = requests.get(url, stream=True, proxies=proxies,
+                                    headers={'User-Agent': UA}, timeout=timeout)
+                if int(req2.headers['content-length']) == file_size:
+                    logger.info("The file is already fully retrieved")
+                else:
+                    logger.warning(
+                        '416 error, try to delete the unfinished file')
+            else:
+                logger.warning(f'{req.status_code} error')
+                print('\n Try to download it with downloader:')
+                print('  if you have installed wget,')
+                print(
+                    r'  try: mpkg set downloader "wget -q -O {filepath} {url}"')
+                print(
+                    '\n If you have enabled resuming, try to delete the unfinished file')
+        else:
+            with click.progressbar(contents, length=length, label=label) as bar:
+                with open(str(file), fmode) as f:
+                    for chunk in bar:
+                        if chunk:
+                            f.write(chunk)
+            if resume:
+                unfinished.unlink()
     if not file.is_file():
         logger.warning(f'no {file}({command})')
     if sha256:
