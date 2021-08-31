@@ -127,20 +127,21 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
         fmode = 'wb'
         file_size = 0
         unfinished = file.parent / (file.name+'.unfinished')
-        if resume:
-            if unfinished.exists() and file.exists():
-                fmode = 'ab'
-                file_size = file.stat().st_size
-                logger.debug(f'resuming from {file_size}')
-                headers['Range'] = f'bytes={file_size}-'
-            else:
-                unfinished.touch()
+        if resume and unfinished.exists() and file.exists():
+            fmode = 'ab'
+            file_size = file.stat().st_size
+            logger.debug(f'resuming from {file_size}')
+            headers['Range'] = f'bytes={file_size}-'
         req = requests.get(url, stream=True, proxies=proxies,
                            headers=headers, timeout=timeout)
         chunk_size = 2**20
         contents = req.iter_content(chunk_size=chunk_size)
         if 'content-length' in req.headers:
             length = int(req.headers['content-length'])/chunk_size
+            resume_gt = float(GetConfig('resume_gt', default='20'))
+            if resume and length > resume_gt and not unfinished.exists():
+                logger.debug('enable resuming')
+                unfinished.touch()
         else:
             logger.debug('unknown content-length')
             length = 0
@@ -158,7 +159,8 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
                 req2 = requests.get(url, stream=True, proxies=proxies,
                                     headers={'User-Agent': UA}, timeout=timeout)
                 if int(req2.headers['content-length']) == file_size:
-                    logger.info("The file is already fully retrieved")
+                    logger.info(
+                        "The file is already fully retrieved. If there isn't any hash mistake, delete the unfinished flag file (example.exe.unfinished) manually.")
                 else:
                     logger.warning(
                         '416 error, try to delete the unfinished file')
@@ -176,7 +178,7 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
                     for chunk in bar:
                         if chunk:
                             f.write(chunk)
-            if resume:
+            if unfinished.exists():
                 unfinished.unlink()
     if not file.is_file():
         logger.warning(f'no {file}({command})')
