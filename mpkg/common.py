@@ -32,6 +32,12 @@ class soft_data:
     homepage: str = ''
     allowExtract: bool = False
 
+    def format(self):
+        for k, v in self.arch.items():
+            self.arch[k] = v.format(ver=self.ver)
+        for i, v in enumerate(self.links):
+            self.links[i] = v.format(ver=self.ver)
+
     def asdict(self, simplify=False):
         if simplify:
             return dict([(k, v) for k, v in asdict(self).items() if v])

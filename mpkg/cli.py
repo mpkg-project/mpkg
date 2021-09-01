@@ -62,8 +62,9 @@ def sync(jobs, sync, changelog, use_cache, reverse):
 @click.option('-i', '--install', is_flag=True)
 @click.option('-d', '--download', is_flag=True)
 @click.option('-t', '--temporary', is_flag=True)
+@click.option('--no-format', is_flag=True)
 @click.option('--id')
-def load(file, config, install, download, id, temporary):
+def load(file, config, install, download, id, temporary, no_format):
     if config:
         Load(file, installed=False, temporary=temporary)
         return
@@ -72,14 +73,18 @@ def load(file, config, install, download, id, temporary):
         apps = []
         for pkg in loaded[0]:
             pkg.prepare()
-            apps += [App(soft) for soft in pkg.json_data['packages']]
+            apps += [App(soft, no_format=no_format)
+                     for soft in pkg.json_data['packages']]
     elif loaded[1] == '.json':
-        apps = [App(soft) for soft in loaded[0]]
+        apps = [App(soft, no_format=no_format) for soft in loaded[0]]
     if id:
         apps = [app for app in apps if app.data.id == id]
     for app in apps:
         if not app.data.ver:
             logger.warning('invalid ver')
+        if no_format:
+            pprint(app.data.asdict(simplify=True))
+            return
         if install:
             app.install()
         elif download:
@@ -199,7 +204,7 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
     elif len(values) == 1:
         value = values[0]
     else:
-        value = ''
+        value = None
     if disable:
         value_ = GetConfig(key, filename=filename)
         if not value_:
@@ -238,8 +243,9 @@ def apps_params(func):
     @click.argument('packages', nargs=-1)
     @click.option('-o', '--outdated', is_flag=True)
     @click.option('--url')
+    @click.option('--ver')
     @functools.wraps(func)
-    def wrapper(packages, outdated, url, *args_, **kwargs):
+    def wrapper(packages, outdated, url, ver, *args_, **kwargs):
         apps = name_handler(packages, outdated)
         if not apps:
             print("Missing argument 'PACKAGES...'")
@@ -248,7 +254,11 @@ def apps_params(func):
             if url:
                 app.data.arch = {}
                 app.data.links = [url]
+            if ver:
+                app.data.ver = ver
+                app.data.format()
         return func(apps, *args_, **kwargs)
+
     return wrapper
 
 

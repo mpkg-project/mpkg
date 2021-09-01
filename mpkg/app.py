@@ -131,12 +131,14 @@ def InstallPortable(filepath, soft, delete):
 
 
 class App(object):
-    def __init__(self, data):
+    def __init__(self, data, no_format=False):
         if not data.get('name'):
             data['name'] = data['id']
         self.apps = [App(soft) for soft in GetSofts()
                      if soft['id'] in data['depends']] if data.get('depends') else []
         self.data = soft_data(**data)
+        if not no_format:
+            self.data.format()
 
     def dry_run(self):
         SetConfig(self.data.name, [self.data.ver,
