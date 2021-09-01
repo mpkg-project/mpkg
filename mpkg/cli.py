@@ -394,6 +394,7 @@ def search(words, name_only, pretty):
             score = [1 for w in words if w in soft['name'].lower()]
         else:
             score = [1 for w in words if w in soft['name'].lower()
+                     or w in soft.get('summary', '').lower()
                      or w in soft.get('description', '').lower()]
         if sum(score) == len(words):
             if pretty:
