@@ -1,5 +1,9 @@
 # mpkg
 
+[![PyPI status](https://img.shields.io/pypi/status/mpkg.svg)](https://pypi.org/project/mpkg/)
+[![GitHub release](https://img.shields.io/github/release/mpkg-project/mpkg.svg)](https://GitHub.com/mpkg-project/mpkg/releases/)
+[![Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://pypi.org/project/mpkg/)
+
 mpkg 主要用于获取最新的软件。
 
 mpkg 可以通过一个 json 文件保存大量软件信息，也可以调用 python 代码爬取信息。软件信息可以通过同步 json 或通过本地爬取获得，信息同步完成后可在本地查看、搜索或下载软件，不需要调用其他网站的 api。
@@ -77,6 +81,14 @@ mpkg download mpkg.download --root .
 
 注意，mpkg 会调用`C:\Program Files\7-Zip\7z.exe`解压压缩包。若 7z 安装位置有误，可进行手动设置（如`mpkg set 7z "\"C:\Program Files (x86)\7-Zip\7z.exe\" x {filepath} -o{root} -aoa > nul"`）。
 
+#### mpkg set shimexe "path"
+
+为方便在命令行中调用程序，mpkg 需要手动将 `%USERPROFILE%\.config\mpkg\bin` 目录加入至环境变量 PATH 中（也可通过 `mpkg set bin_dir dir` 修改目录位置）。mpkg 默认会根据软件信息通过创建 bat 的方式调用命令（如调用 curl, wget, adb 等），若设置 shimexe，则会生成 exe 来进行调用而非通过 bat。
+
+```cmd
+mpkg set shimexe "D:\shimexe.exe"
+```
+
 #### mpkg set allow_cmd yes
 
 若软件需要调用 cmd 命令（如 TrafficMonitor.install），则需要执行`mpkg set allow_cmd yes`，否则会输出`skip command(...)`。在调用 cmd 命令时会要求输入 y 进行确认，可通过执行 `mpkg set no_confirmation yes` 跳过确认。
@@ -90,20 +102,6 @@ rem 需要修改 C:\DESKTOP 为桌面文件夹所在路径
 mpkg set shortcut_command "mshta VBScript:Execute(\"Set a=CreateObject(\"\"WScript.Shell\"\"):Set b=a.CreateShortcut(\"\"C:\DESKTOP\{name}.lnk\"\"):b.TargetPath=\"\"{target}\"\":b.Arguments =\"\"{args}\"\":b.WorkingDirectory=\"\"{root}\"\":b.Save:close\")"
 ```
 
-#### mpkg set link_command "cmd"
-
-mpkg 可以通过创建 bat 的方式调用命令（如 curl, wget, adb 等），但需要手动加入`%USERPROFILE%\.config\mpkg\bin`（也可通过 `mpkg get bin_dir` 查看目录位置）至 PATH 环境变量中。可以忽略对 link_command 的设置。
-
-```cmd
-mpkg set link_command "shimgen -p=\"{binfile}\" -o=\"%USERPROFILE%\.config\mpkg\bin\{name}.exe\" -c=\"{args}\""
-```
-
-#### mpkg set shimexe "path"
-
-```cmd
-mpkg set shimexe "D:\shimexe.exe"
-```
-
 ### 杂项
 
 ```bash
@@ -112,6 +110,9 @@ mpkg set debug yes
 
 mpkg set download_cache yes
 # 执行后，若下载文件所在目录存在文件名后加 .cached 的文件，则跳过该文件的下载
+
+mpkg set download_resuming yes
+# 执行后，若所下载文件大于 20MB，则启用续传功能
 
 mpkg set delete_after_install yes
 # 执行后，在安装完软件后会删除安装包
