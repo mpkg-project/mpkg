@@ -96,7 +96,11 @@ class soft_data:
 
     def format(self):
         for k, v in self.arch.items():
-            self.arch[k] = v.format(ver=self.ver)
+            if not isinstance(v, list):
+                self.arch[k] = v.format(ver=self.ver)
+            else:
+                for i, v_ in enumerate(v):
+                    self.arch[k][i] = v_.format(ver=self.ver)
         for i, v in enumerate(self.links):
             self.links[i] = v.format(ver=self.ver)
         for k, v in self.cmd.items():
