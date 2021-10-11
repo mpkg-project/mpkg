@@ -27,9 +27,16 @@ def LoadFile(path: str):
     return module.Package()
 
 
-def Configurate(path: str):
+def Configure(path: str):
     pkg = LoadFile(path)
     if pkg.isMultiple:
+        i = pkg.getconfig('i')
+        if i:
+            print(f'old profile count: {i}')
+            for i in range(i):
+                newpkg = LoadFile(path)
+                newpkg.cfg += f'.{i}'
+                print(newpkg.cfg2json())
         i = int(
             input(_('\ninput the number of profiles for {pkgname}: ').format(pkgname=pkg.ID)))
         pkg.setconfig('i', i)
@@ -117,7 +124,7 @@ def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True
         filepath = Save(source, ver, sync, check_ver, temporary)[0]
         pkg = LoadFile(filepath)
         if pkg.needConfig and not installed:
-            Configurate(filepath)
+            Configure(filepath)
         if pkg.isMultiple:
             pkgs = []
             if not pkg.getconfig('i'):

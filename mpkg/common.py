@@ -182,6 +182,10 @@ class Soft(object):
         self.json_data = {'packages': self.packages}
         self.json_data['api'] = self.api
 
+    def cfg2json(self):
+        self.__init__()
+        return dict([(k, v) for k, v in GetConfig(path=self.ID, filename=self.cfg, default={}).items() if v])
+
 
 class Driver(Soft):
     needConfig = True
