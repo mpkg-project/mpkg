@@ -161,6 +161,10 @@ class Soft(object):
     def getconfig(self, key):
         return GetConfig(key, path=self.ID, filename=self.cfg)
 
+    def check(self):
+        for p in self.json_data['packages']:
+            assert p.get('ver'), 'ver is not defined'
+
     def json(self) -> bytes:
         if not self.isPrepared:
             self.prepare()
@@ -181,6 +185,7 @@ class Soft(object):
         self.packages.append(soft.asdict(simplify=True))
         self.json_data = {'packages': self.packages}
         self.json_data['api'] = self.api
+        self.check()
 
     def cfg2json(self):
         self.__init__()
