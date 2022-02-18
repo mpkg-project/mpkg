@@ -29,11 +29,12 @@ def cli():
 @click.option('--sync/--no-sync', default=True, help=_('sync source files'))
 @click.option('-l', '--changelog', is_flag=True)
 @click.option('-c', '--use-cache', is_flag=True)
+@click.option('-f', '-F', '--force', is_flag=True)
 @click.option('--reverse', is_flag=True)
-def sync(jobs, sync, changelog, use_cache, reverse):
+def sync(jobs, sync, changelog, use_cache, force, reverse):
     if proxy:
         print(f'using proxy: {proxy}\n')
-    softs = GetSofts(jobs, sync, use_cache=use_cache)
+    softs = GetSofts(jobs, sync, use_cache=use_cache, ignore_cache=force)
     names = [soft['name'] for soft in softs]
     outdated = sorted(list(GetOutdated().items()),
                       key=lambda x: x[1][0], reverse=reverse)
@@ -63,8 +64,9 @@ def sync(jobs, sync, changelog, use_cache, reverse):
 @click.option('-d', '--download', is_flag=True)
 @click.option('-t', '--temporary', is_flag=True)
 @click.option('--no-format', is_flag=True)
+@click.option('-w', '--write', is_flag=True)
 @click.option('--id')
-def load(file, config, install, download, id, temporary, no_format):
+def load(file, config, install, download, id, temporary, no_format, write):
     if config:
         Load(file, installed=False, temporary=temporary)
         return
@@ -79,6 +81,11 @@ def load(file, config, install, download, id, temporary, no_format):
         apps = [App(soft, no_format=no_format) for soft in loaded[0]]
     if id:
         apps = [app for app in apps if app.data.id == id]
+    if write:
+        text = '\n'.join([str(app.data.asdict(simplify=True)) for app in apps])
+        with open(file+'.loaded.txt', 'wb') as f:
+            f.write(text.encode('utf-8'))
+        return
     for app in apps:
         if not app.data.ver:
             logger.warning('invalid ver')
@@ -229,7 +236,10 @@ def set_(key, values, islist, isdict, add, test, delete, filename, disable, enab
 @click.argument('key', required=False)
 @filename_params
 def get(key, filename):
-    pprint(GetConfig(key, filename=filename))
+    if key:
+        print(GetConfig(key, filename=filename))
+    else:
+        pprint(GetConfig(key, filename=filename))
 
 
 def apps_params(func):
@@ -244,19 +254,23 @@ def apps_params(func):
     @click.option('-o', '--outdated', is_flag=True)
     @click.option('--url')
     @click.option('--ver')
+    @click.option('--ignore-hash', is_flag=True)
     @functools.wraps(func)
-    def wrapper(packages, outdated, url, ver, *args_, **kwargs):
+    def wrapper(packages, outdated, url, ver, ignore_hash, *args_, **kwargs):
         apps = name_handler(packages, outdated)
         if not apps:
             print("Missing argument 'PACKAGES...'")
             exit()
         for app in apps:
             if url:
+                ignore_hash = True
                 app.data.arch = {}
                 app.data.links = [url]
             if ver:
                 app.data.ver = ver
                 app.data.format()
+            if ignore_hash:
+                app.data.sha256 = None
         return func(apps, *args_, **kwargs)
 
     return wrapper
@@ -309,12 +323,12 @@ def install(apps, dry_run, delete_downloaded, delete_installed, quiet, veryquiet
 @apps_params
 @click.option('-O', '--root')
 @click.option('--with-ver', is_flag=True)
-@click.option('-i', '--install', is_flag=True)
+@click.option('--no-install', is_flag=True)
 @click.option('-del', '--delete-downloaded', is_flag=True)
-def extract(apps, install, with_ver, root, delete_downloaded):
+def extract(apps, no_install, with_ver, root, delete_downloaded):
     DownloadApps(apps)
     for app in apps:
-        if install:
+        if not no_install:
             app.dry_run()
         app.extract(with_ver, root, delete_downloaded)
 
@@ -322,13 +336,16 @@ def extract(apps, install, with_ver, root, delete_downloaded):
 @cli.command()
 @click.argument('packages', nargs=-1)
 def remove(packages):
-    packages = [pkg.lower() for pkg in packages]
+    packages = [pkg for pkg in packages]
     if packages:
         installed = [k.lower()
                      for k in list(GetConfig(filename='installed.json').keys())]
         for name in packages:
-            if name in installed:
+            if name.lower() in installed:
+                if name not in installed:
+                    name = name.lower()
                 SetConfig(name, filename='installed.json', delete=True)
+                print(f'{name} removed')
             else:
                 logger.warning(f'cannot find {name}')
     else:

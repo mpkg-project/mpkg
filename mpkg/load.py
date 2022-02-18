@@ -237,7 +237,7 @@ def Prepare(pkg):
         return pkg
 
 
-def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
+def GetSofts(jobs=10, sync=True, use_cache=True, ignore_cache=False) -> list:
     softs_ = GetConfig('softs', filename='softs.json')
     if softs_ and use_cache:
         return softs_
@@ -246,7 +246,7 @@ def GetSofts(jobs=10, sync=True, use_cache=True) -> list:
 
     with Pool(jobs) as p:
         items = [x for x in p.map(lambda x:Load(
-            x, sync=sync, jobs=jobs), GetConfig('sources')) if x]
+            x, sync=sync, jobs=jobs, check_ver=not ignore_cache), GetConfig('sources')) if x]
     softs, pkgs = Sorted(items)
 
     score = HasConflict(softs, pkgs)
