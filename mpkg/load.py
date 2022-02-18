@@ -274,7 +274,11 @@ def GetOutdated():
     installed = installed if installed else {}
     latest = {}
     for soft in GetSofts():
-        latest[soft['name']] = [soft['ver'], soft.get('date')]
+        ver = soft.get('ver')
+        if ver:
+            latest[soft['name']] = [ver, soft.get('date')]
+        else:
+            logger.warning(f'no ver for {soft["name"]}')
     outdated = {}
     for name, value in installed.items():
         if not name in latest:

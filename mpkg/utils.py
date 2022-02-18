@@ -15,7 +15,7 @@ from urllib.parse import unquote
 import click
 import requests
 from loguru import logger
-from tenacity import Retrying, stop_after_attempt, wait_fixed
+from tenacity import RetryCallState, Retrying, stop_after_attempt, wait_fixed
 
 from .config import HOME, GetConfig, SetConfig
 
@@ -36,14 +36,14 @@ retry_attempts = int(GetConfig('retry_attempts', default='3'))
 
 
 def retry(func_name='', attempts=retry_attempts):
-    def before_log(func_name):
-        def retry_log(retry_state):
+    def after_log(func_name):
+        def retry_log(retry_state: RetryCallState):
             fnname = func_name if func_name else retry_state.fn.__name__
-            if retry_state.attempt_number != 1:
+            if retry_state.outcome.failed:
                 logger.info(
-                    f"starting call to '{fnname}' (try: {retry_state.attempt_number})")
+                    f"Finished call to '{fnname}' (try: {retry_state.attempt_number}), {retry_state.outcome.exception()}")
         return retry_log
-    return Retrying(before=before_log(func_name), stop=stop_after_attempt(attempts),
+    return Retrying(after=after_log(func_name), stop=stop_after_attempt(attempts),
                     wait=wait_fixed(3)).wraps
 
 

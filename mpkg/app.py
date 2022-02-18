@@ -141,6 +141,7 @@ class App(object):
             self.data.format()
 
     def dry_run(self):
+        logger.debug(f'installed: {self.data.name}|{self.data.ver}')
         SetConfig(self.data.name, [self.data.ver,
                                    self.data.date], filename='installed.json')
 
@@ -229,6 +230,7 @@ class App(object):
                 print(_('\ninstalling {name} using {command}').format(
                     name=data.name, command=command))
             code = os.system(command)
+            logger.debug(f'returned {code}')
             if data.cmd.get('end'):
                 Execute(data.cmd['end'].format(file=str(file)))
             self.dry_run()
