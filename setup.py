@@ -30,6 +30,7 @@ setup(
         "click>=7.0.0",
         "loguru>=0.5.1",
         "tenacity>=6.0.0",
+        "semver>=2.8.0",
     ],
     entry_points={
         "console_scripts": [
