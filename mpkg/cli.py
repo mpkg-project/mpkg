@@ -255,8 +255,10 @@ def apps_params(func):
     @click.option('--url')
     @click.option('--ver')
     @click.option('--ignore-hash', is_flag=True)
+    @click.option('--x86', '--32bit', is_flag=True)
+    @click.option('--x64', '--32bit', is_flag=True)
     @functools.wraps(func)
-    def wrapper(packages, outdated, url, ver, ignore_hash, *args_, **kwargs):
+    def wrapper(packages, outdated, url, ver, ignore_hash, x86, x64, *args_, **kwargs):
         apps = name_handler(packages, outdated)
         if not apps:
             print("Missing argument 'PACKAGES...'")
@@ -271,6 +273,12 @@ def apps_params(func):
                 app.data.format()
             if ignore_hash:
                 app.data.sha256 = None
+            if x86 and app.data.arch:
+                app.data.arch['64bit'] = app.data.arch.get('32bit')
+                app.data.sha256['64bit'] = app.data.sha256.get('32bit')
+            if x64 and app.data.arch:
+                app.data.arch['32bit'] = app.data.arch.get('64bit')
+                app.data.sha256['32bit'] = app.data.sha256.get('64bit')
         return func(apps, *args_, **kwargs)
 
     return wrapper

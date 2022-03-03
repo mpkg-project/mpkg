@@ -6,6 +6,7 @@ import hashlib
 import os
 import re
 import shutil
+import string
 import sys
 import tempfile
 from functools import lru_cache
@@ -45,6 +46,18 @@ def retry(func_name='', attempts=retry_attempts):
         return retry_log
     return Retrying(after=after_log(func_name), stop=stop_after_attempt(attempts),
                     wait=wait_fixed(3)).wraps
+
+
+def get_valid_name(text):
+    # see also: https://stackoverflow.com/a/295146
+    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    result = ''
+    for c in text:
+        if not c.isascii() or c in valid_chars:
+            result += c
+        else:
+            result += '_'
+    return result
 
 
 def Hash(filepath, algo='sha256'):
@@ -97,6 +110,7 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
         directory = GetConfig('download_dir')
     if not filename:
         filename = url.split('/')[-1]
+    filename = get_valid_name(filename)
     for rule in GetConfig('saveto', default=[]):
         ext, dir_ = list(rule.items())[0]
         if filename.endswith(ext):

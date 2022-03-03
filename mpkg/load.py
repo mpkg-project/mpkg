@@ -14,6 +14,8 @@ from random import random
 from shutil import rmtree
 from zipfile import ZipFile
 
+import yaml
+
 from .config import HOME, GetConfig, SetConfig
 from .utils import Download, GetPage, Name, ReplaceDir, logger
 
@@ -141,6 +143,10 @@ def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True
         filepath = Save(source, ver, sync, check_ver, temporary)[0]
         with open(filepath, 'r', encoding="utf8") as f:
             return json.load(f)['packages'], '.json'
+    elif source.endswith('.yaml'):
+        filepath = Save(source, ver, sync, check_ver, temporary)[0]
+        with open(filepath, 'r', encoding="utf8") as f:
+            return yaml.safe_load(f.read())['packages'], '.json'
     elif source.endswith('.zip'):
         filepath, latest = Save(source, ver, sync, check_ver, temporary)
         return LoadZip(filepath, latest, installed), '.zip'

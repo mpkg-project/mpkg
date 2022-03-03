@@ -155,6 +155,11 @@ class App(object):
         if self.apps:
             for app in self.apps:
                 app.download()
+        if ARCH == '64bit' and not data.arch.get('64bit') and data.arch.get('32bit'):
+            logger.debug('using 32bit...')
+            data.arch['64bit'] = data.arch['32bit']
+            if isinstance(data.sha256, dict) and data.sha256.get('32bit'):
+                data.sha256['64bit'] = data.sha256['32bit']
         if not ARCH in data.arch:
             if not self.apps:
                 logger.warning(f'{data.name} has no link available')

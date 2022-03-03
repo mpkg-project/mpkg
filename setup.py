@@ -31,6 +31,7 @@ setup(
         "loguru>=0.5.1",
         "tenacity>=6.0.0",
         "semver>=2.8.0",
+        "pyyaml>=5.3.1",
     ],
     entry_points={
         "console_scripts": [
