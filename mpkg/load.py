@@ -92,6 +92,9 @@ def Save(source: str, ver=-1, sync=True, check_ver=True, temporary=False):
         elif source.endswith('.json'):
             filepath, latest = download(
                 source, name, ver, 'json', sync, check_ver, temporary)
+        elif source.endswith('.yaml'):
+            filepath, latest = download(
+                source, name, ver, 'yaml', sync, check_ver, temporary)
         elif source.endswith('.zip'):
             filepath, latest = download(
                 source, name, ver, 'zip', sync, check_ver, temporary)
@@ -112,7 +115,7 @@ def LoadZip(filepath, latest=False, installed=True):
             myzip.extractall(path=str(dir), members=files)
         ReplaceDir(str(dir / files[0]), str(pkgdir))
     files = [str((pkgdir/file).absolute()) for file in os.listdir(pkgdir)
-             if file.endswith('.py') or file.endswith('.json')]
+             if file.endswith('.py') or file.endswith('.json') or file.endswith('.yaml')]
     return [Load(file, installed=installed) for file in files]
 
 

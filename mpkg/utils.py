@@ -110,7 +110,7 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
         directory = GetConfig('download_dir')
     if not filename:
         filename = url.split('/')[-1]
-    filename = get_valid_name(filename)
+    filename = get_valid_name(unquote(filename))
     for rule in GetConfig('saveto', default=[]):
         ext, dir_ = list(rule.items())[0]
         if filename.endswith(ext):
@@ -203,6 +203,7 @@ def Download(url: str, directory='', filename='', output=True, UA=UA, sha256='',
         print(_('checking {hash}').format(hash=algo))
         if sha256 != Hash(file, algo):
             logger.warning(f'wrong {algo}')
+            exit(1)
     return file
 
 

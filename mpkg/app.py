@@ -127,6 +127,8 @@ def InstallPortable(filepath, soft, delete):
                                      binfile=binfile, args=args))
             else:
                 Linking(name, value)
+        else:
+            logger.warning(f'{binfile} not found')
     return root
 
 
@@ -258,7 +260,7 @@ class App(object):
             if str(file).endswith(ext):
                 if dir_ == 'TEMPDIR-D':
                     delete_downloaded = True
-        if delete_downloaded and file:
+        if delete_downloaded and file and code == 0:
             logger.debug(f'delete {file}')
             file.unlink()
 
