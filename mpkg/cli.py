@@ -4,6 +4,7 @@
 import functools
 import gettext
 import os
+from datetime import datetime
 from pprint import pprint
 from shutil import rmtree
 
@@ -428,6 +429,44 @@ def search(words, name_only, pretty):
                 print(soft['name'])
     if pretty:
         pprint(result, compact=True)
+
+
+@cli.command()
+@click.option('--save', is_flag=True)
+@click.option('--diff', is_flag=True)
+def local(save, diff):
+    home = HOME / 'history/full'
+    dt = datetime.now()
+    if save:
+        ts = int(dt.timestamp())
+        current = GetConfig(filename='installed.json')
+        SetConfig('data', current,
+                  filename=f'{ts}.json', abspath=home)
+    elif diff:
+        fn_old = list(home.iterdir())[-1].name
+        time_old = datetime.fromtimestamp(
+            int(fn_old[:-5])).strftime('%Y-%m-%d %H:%M')
+        print(f"{time_old}  ->  {dt.strftime('%Y-%m-%d %H:%M')}")
+        old = GetConfig('data', filename=fn_old, abspath=home)
+        current = GetConfig(filename='installed.json')
+        changed = {k: v for k, v in old.items()
+                   if v != current.get(k) and k in current}
+        if changed:
+            print(f'\nChanged:')
+            for k, v in changed.items():
+                print(f'  {k}:    \t{v} -> {current.get(k)}')
+        added = [k for k in current.keys() if k not in old.keys()]
+        if added:
+            print(f'\nAdded:')
+            for k in added:
+                print(f'  {k}:    \t{current.get(k)}')
+        removed = [k for k in old.keys() if k not in current.keys()]
+        if removed:
+            print(f'\nRemoved:')
+            for k in removed:
+                print(f'  {k}:    \t{old.get(k)}')
+    else:
+        print(local.get_help(click.core.Context(local)))
 
 
 if __name__ == "__main__":
