@@ -11,6 +11,7 @@ import click
 
 from .common import soft_data
 from .config import GetConfig, SetConfig
+from .lnktools import create_lnk
 from .load import GetSofts
 from .utils import Download, Extract, Selected, logger
 
@@ -96,18 +97,32 @@ def InstallPortable(filepath, soft, delete):
         else:
             args, alias = '', ''
         if file.startswith('MPKGLNK|'):
-            strlist = file[8:].split('|')
-            if len(strlist) == 2:
-                strlist.append('')
-            target = root / strlist[1]
-            args = '|'.join(strlist[2:])
-            cmd = GetConfig('shortcut_command')
-            if cmd and target.is_file():
-                name = strlist[0] if strlist[0] else target.name.split('.')[0]
-                os.system(cmd.format(
-                    name=name, target=target.absolute(), root=target.parent.absolute(), args=args))
-            else:
-                logger.warning(f'no shortcut for {target.absolute()}')
+            desktop_dir = GetConfig('desktop_dir')
+            desktop_dir = Path(desktop_dir) if desktop_dir else \
+                Path.home() / 'Desktop'
+            startmenu_dir = GetConfig('startmenu_dir')
+            startmenu_dir = Path(startmenu_dir) if startmenu_dir else Path(
+                os.getenv('APPDATA')) / 'Microsoft/Windows/Start Menu/Programs'
+            root_dirs = [desktop_dir, startmenu_dir]
+            if GetConfig('lnk_path') == 'desktop':
+                root_dirs = [desktop_dir]
+            elif GetConfig('lnk_path') == 'startmenu':
+                root_dirs = [startmenu_dir]
+            elif GetConfig('lnk_path') == 'none':
+                root_dirs = []
+            for lnk_root in root_dirs:
+                strlist = file[8:].split('|')
+                if len(strlist) == 2:
+                    strlist.append('')
+                target = root / strlist[1]
+                args = '|'.join(strlist[2:])  # TODO
+                if target.is_file():
+                    lnk_name = strlist[0] if strlist[0] else \
+                        target.name.split('.')[0]
+                    lnk_path = lnk_root / (lnk_name+'.lnk')
+                    print(_('creating lnk({0}) for {1}').format(
+                        lnk_path.absolute(), target.absolute()))
+                    create_lnk(target.absolute(), lnk_path.absolute())
             continue
         binfile = root / file
         if binfile.is_file():

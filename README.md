@@ -93,15 +93,6 @@ mpkg set shimexe "D:\shimexe.exe"
 
 若软件需要调用 cmd 命令（如 TrafficMonitor.install），则需要执行`mpkg set allow_cmd yes`，否则会输出`skip command(...)`。在调用 cmd 命令时会要求输入 y 进行确认，可通过执行 `mpkg set no_confirmation yes` 跳过确认。
 
-#### mpkg set shortcut_command "cmd"
-
-mpkg 不支持创建快捷方式，但可通过调用命令的方式实现。若未设置此项，需要创建快捷方式时会出现`no shortcut for ...`的 warning，下面给出一种调用示例（若无特殊情况，快捷方式一般只需创建一次，因而也可手动创建快捷方式并忽略此设置）。
-
-```cmd
-rem 需要修改 C:\DESKTOP 为桌面文件夹所在路径
-mpkg set shortcut_command "mshta VBScript:Execute(\"Set a=CreateObject(\"\"WScript.Shell\"\"):Set b=a.CreateShortcut(\"\"C:\DESKTOP\{name}.lnk\"\"):b.TargetPath=\"\"{target}\"\":b.Arguments =\"\"{args}\"\":b.WorkingDirectory=\"\"{root}\"\":b.Save:close\")"
-```
-
 ### 杂项
 
 ```bash
