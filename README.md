@@ -20,9 +20,10 @@ mpkg 下载软件时不需要管理员权限，调用可执行文件进行安装
 
 ```bash
 # pip install mpkg
-pip install git+https://github.com/mpkg-project/mpkg.git
+pip install --upgrade https://github.com/mpkg-project/mpkg/archive/master.zip
 mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/main.json
 # mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/scoop.json
+# mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/winget.json
 mpkg sync
 
 mpkg show -A --pprint
