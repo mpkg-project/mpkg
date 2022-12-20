@@ -85,22 +85,14 @@ def Redirect(url: str) -> str:
 
 @retry('GetPage')
 @lru_cache()
-def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True, tojson=False, redirect_3xx=True) -> str:
-    new_url = Redirect(url) if redirect else url
-    logger.debug(f'requesting {new_url}')
+def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True, tojson=False) -> str:
+    if redirect:
+        url = Redirect(url)
+    logger.debug(f'requesting {url}')
     res = requests.get(
-        new_url, headers={'User-Agent': UA}, timeout=timeout, proxies=proxies, allow_redirects=redirect_3xx)
-    if redirect_3xx == False:
-        if not res.status_code in range(300, 400):
-            if redirect:
-                return GetPage(url, warn, UA, timeout, False, tojson, redirect_3xx)
-            else:
-                logger.warning(f'{new_url} {res.status_code} error')
-                return 'error'
-        else:
-            return res.headers['Location']
+        url, headers={'User-Agent': UA}, timeout=timeout, proxies=proxies)
     if warn and res.status_code != 200:
-        logger.warning(f'{new_url} {res.status_code} error')
+        logger.warning(f'{url} {res.status_code} error')
         return 'error'
     result = res.json() if tojson else res.text
     return result
