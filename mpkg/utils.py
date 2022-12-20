@@ -85,17 +85,36 @@ def Redirect(url: str) -> str:
 
 @retry('GetPage')
 @lru_cache()
-def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True, tojson=False) -> str:
-    if redirect:
-        url = Redirect(url)
+def GetPage(url: str, warn=True, UA=UA, timeout=timeout, redirect=True) -> str:
+    url = Redirect(url) if redirect else url
     logger.debug(f'requesting {url}')
     res = requests.get(
         url, headers={'User-Agent': UA}, timeout=timeout, proxies=proxies)
     if warn and res.status_code != 200:
         logger.warning(f'{url} {res.status_code} error')
         return 'error'
-    result = res.json() if tojson else res.text
-    return result
+    return res.text
+
+
+@retry('MGet')
+def MGet(url: str, redirect=True, **kwargs):
+    url = Redirect(url) if redirect else url
+    logger.debug(f'requesting {url}')
+    if 'headers' not in kwargs:
+        kwargs['headers'] = {'User-Agent': UA}
+    elif not kwargs['headers'].get('User-Agent'):
+        kwargs['headers']['User-Agent'] = UA
+    if 'timeout' not in kwargs:
+        kwargs['timeout'] = timeout
+    if 'proxies' not in kwargs:
+        kwargs['proxies'] = proxies
+    valid_status = [200]
+    if kwargs.get('allow_redirects'):
+        valid_status += list(range(300, 400))
+    res = requests.get(url, **kwargs)
+    if res.status_code not in valid_status:
+        logger.warning(f'{url} returned {res.status_code}')
+    return res
 
 
 @retry()
