@@ -66,8 +66,9 @@ def sync(jobs, sync, changelog, use_cache, force, reverse):
 @click.option('-t', '--temporary', is_flag=True)
 @click.option('--no-format', is_flag=True)
 @click.option('-w', '--write', is_flag=True)
+@click.option('--arch')
 @click.option('--id')
-def load(file, config, install, download, id, temporary, no_format, write):
+def load(file, config, install, download, id, temporary, no_format, write, arch):
     if config:
         Load(file, installed=False, temporary=temporary)
         return
@@ -87,6 +88,12 @@ def load(file, config, install, download, id, temporary, no_format, write):
         with open(file+'.loaded.txt', 'wb') as f:
             f.write(text.encode('utf-8'))
         return
+    if arch:
+        id_pre = f'MPKG-ARCH|{arch}|'
+        apps = [app for app in apps if app.data.id.startswith(id_pre)]
+        for app in apps:
+            app.data.id = app.data.id[len(id_pre):]
+            app.data.name = app.data.id
     for app in apps:
         if not app.data.ver:
             logger.warning('invalid ver')

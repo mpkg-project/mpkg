@@ -57,6 +57,16 @@ def dicts_to_dataclasses(instance):
             instance.arch_[k] = arch_data(**v)
 
 
+def get_bits(text):
+    return {'32bit': '32bit', '64bit': '64bit',
+            '386': '32bit', 'i386': '32bit', 'i686': '32bit', 'x86': '32bit',
+            'amd64': '64bit', 'x86_64': '64bit',
+            'arm': '32bit',  'armhf': '32bit',
+            'arm6': '32bit', 'armv6': '32bit', 'arm-v6': '32bit',
+            'arm7': '32bit', 'armv7': '32bit', 'arm-v7': '32bit',
+            'arm64': '64bit'}[text]
+
+
 @dataclass
 class soft_data:
     id: str = ''
@@ -124,6 +134,25 @@ class soft_data:
         else:
             return asdict(self)
 
+    def copyfrom(self, sdata):
+        src_dict = sdata.asdict()
+        new_dict = self.asdict()
+        for k, v in new_dict.items():
+            if not v:
+                new_dict[k] = src_dict[k]
+        return soft_data(**new_dict)
+
+    def create_new(self, arch: dict, sha256='', bin=''):
+        sdata = soft_data()
+        for k, url in arch.items():
+            bits = get_bits(k)
+            sdata.arch[bits] = url
+            if sha256:
+                sdata.sha256[bits] = sha256.get(k)
+            if bin:
+                sdata.bin = bin
+        return sdata.copyfrom(self)
+
 
 class Soft(object):
     api = 1
@@ -169,6 +198,13 @@ class Soft(object):
         if not self.isPrepared:
             self.prepare()
         return json.dumps(self.json_data).encode('utf-8')
+
+    def append_arch(self, tag_list: list, soft_data: soft_data):
+        id_pre = 'MPKG-ARCH|'+'_'.join(tag_list)+'|'
+        soft_data.id = id_pre+self.ID
+        self.packages.append(soft_data.asdict(simplify=True))
+        self.json_data = {'packages': self.packages}
+        self.check()
 
     def prepare(self):
         self.isPrepared = True

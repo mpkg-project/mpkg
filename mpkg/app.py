@@ -3,9 +3,9 @@
 
 import gettext
 import os
+import platform
 import shutil
 from pathlib import Path
-from platform import architecture
 
 import click
 
@@ -16,7 +16,8 @@ from .load import GetSofts
 from .utils import Download, Extract, Selected, logger
 
 _ = gettext.gettext
-ARCH = architecture()[0]
+ARCH = platform.architecture()[0]
+SYS = platform.system()
 BIN_DIR = Path(GetConfig('bin_dir', default='.'))
 
 
@@ -80,16 +81,21 @@ def InstallPortable(filepath, soft, delete):
     if not root:
         name = soft['name']
         root = Path(GetConfig('files_dir')) / name
+    if isinstance(soft['bin'], dict):
+        soft['bin'] = soft['bin'][ARCH]
     if 'MPKG-PORTABLE-EXE' in soft['bin']:
         soft['bin'].remove('MPKG-PORTABLE-EXE')
         if not root.exists():
             root.mkdir()
         filepath = shutil.move(filepath, root/filepath.name)
+    elif 'MPKG-DEB' in soft['bin']:
+        soft['bin'].remove('MPKG-DEB')
+        cmd = f'sudo apt install {filepath}'  # TODO: custom commmand
+        logger.debug(f'executing {cmd}')
+        os.system(cmd)
     else:
         root = Extract(filepath, root)
     SetConfig(soft['name'], str(root), filename='root_installed.json')
-    if isinstance(soft['bin'], dict):
-        soft['bin'] = soft['bin'][ARCH]
     for file in [file for file in soft['bin'] if file != 'MPKG-PORTABLE']:
         if isinstance(file, list):
             args = ' ' + file[2] if len(file) == 3 else ''
@@ -126,6 +132,13 @@ def InstallPortable(filepath, soft, delete):
             continue
         binfile = root / file
         if binfile.is_file():
+            if SYS == 'Linux':
+                cmd = f'ln -s "{str(binfile)}" "{str(BIN_DIR / name)}"'
+                logger.debug(f'executing {cmd}')
+                os.system(f'chmod +x "{str(binfile)}"')
+                os.system(f'rm -f "{str(BIN_DIR / name)}"')
+                os.system(cmd)
+                continue
             shimexe = GetConfig('shimexe')
             cmd = GetConfig('link_command')
             name = alias if alias else binfile.name.split('.')[0]

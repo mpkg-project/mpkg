@@ -321,6 +321,9 @@ def Extract(filepath, root='', ver='', delete=False):
     print(_('extracting {filepath} to {root}').format(
         filepath=filepath, root=root))
     os.system(cmd)
+    files = os.listdir(extract_dir)
+    if len(files) == 1 and files[0].endswith('.tar'):
+        Extract((extract_dir/files[0]), delete=True)
     files, root_new = os.listdir(extract_dir), extract_dir
     while len(files) == 1:
         root_new = root_new/files[0]
@@ -333,6 +336,7 @@ def Extract(filepath, root='', ver='', delete=False):
     if extract_dir.exists():
         shutil.rmtree(extract_dir)
     if delete:
+        logger.debug(f'unlink {filepath}')
         filepath.unlink()
     return root
 
