@@ -12,6 +12,7 @@ import click
 
 from . import __version__
 from .app import App, Linking
+from .commands import cmd_doctor
 from .config import HOME, GetConfig, SetConfig
 from .load import ConfigSoft, GetOutdated, GetSofts, Load, Names2Softs
 from .utils import DownloadApps, PreInstall, logger, proxy
@@ -89,11 +90,15 @@ def load(file, config, install, download, id, temporary, no_format, write, arch)
             f.write(text.encode('utf-8'))
         return
     if arch:
-        id_pre = f'MPKG-ARCH|{arch}|'
-        apps = [app for app in apps if app.data.id.startswith(id_pre)]
-        for app in apps:
-            app.data.id = app.data.id[len(id_pre):]
-            app.data.name = app.data.id
+        if str(arch).lower() == 'none':
+            apps = [
+                app for app in apps if not app.data.id.startswith('MPKG-ARCH|')]
+        else:
+            id_pre = f'MPKG-ARCH|{arch}|'
+            apps = [app for app in apps if app.data.id.startswith(id_pre)]
+            for app in apps:
+                app.data.id = app.data.id[len(id_pre):]
+                app.data.name = app.data.id
     for app in apps:
         if not app.data.ver:
             logger.warning('invalid ver')
@@ -474,6 +479,9 @@ def local(save, diff):
                 print(f'  {k}:    \t{old.get(k)}')
     else:
         print(local.get_help(click.core.Context(local)))
+
+
+cli.add_command(cmd_doctor.doctor)
 
 
 if __name__ == "__main__":

@@ -192,7 +192,9 @@ class Soft(object):
 
     def check(self):
         for p in self.json_data['packages']:
-            assert p.get('ver'), 'ver is not defined'
+            if not p.get('ver'):
+                print(self.json_data)
+                raise AssertionError('ver is not defined')
 
     def json(self) -> bytes:
         if not self.isPrepared:

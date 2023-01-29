@@ -8,6 +8,7 @@ import os
 import re
 import tempfile
 import time
+import traceback
 from multiprocessing.dummy import Pool
 from pathlib import Path
 from random import random
@@ -122,6 +123,7 @@ def LoadZip(filepath, latest=False, installed=True):
 def Load(source: str, ver=-1, installed=True, sync=True, jobs=10, check_ver=True, temporary=False):
     logger.debug(f'loading {source}')
     if not GetConfig('unsafe') == 'yes' and not source.split('.')[-1] in ['latest', 'nightly', 'json']:
+        logger.warning('skip unsafe source')
         return [], '.json'
     if not installed:
         sync = True
@@ -243,6 +245,7 @@ def Prepare(pkg):
             return pkg
     except Exception as err:
         logger.error(f'{pkg.ID}: {err}')
+        logger.debug(traceback.print_exc())
         return pkg
 
 

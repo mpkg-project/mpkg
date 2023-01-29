@@ -110,7 +110,7 @@ def MGet(url: str, redirect=True, **kwargs):
     if 'proxies' not in kwargs:
         kwargs['proxies'] = proxies
     valid_status = [200]
-    if kwargs.get('allow_redirects'):
+    if kwargs.get('allow_redirects') == False:
         valid_status += list(range(300, 400))
     res = requests.get(url, **kwargs)
     if res.status_code not in valid_status:
