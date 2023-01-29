@@ -21,10 +21,16 @@ mpkg 下载软件时不需要管理员权限，调用可执行文件进行安装
 ```bash
 # pip install mpkg
 pip install --upgrade https://github.com/mpkg-project/mpkg/archive/master.zip
-mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/main.json
+
+mpkg doctor --add-repo main
+# 即 mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/main.json
+
 # mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/scoop.json
 # mpkg set sources --add https://github.com/mpkg-bot/mpkg-history/raw/master/winget.json
+
 mpkg sync
+
+mpkg doctor
 
 mpkg show -A --pprint
 # ['7zip', 'IntelWirelessDriver.admin', 'TrafficMonitor.install', ...]
@@ -41,7 +47,7 @@ mpkg download mpkg.download --root .
 
 ## 配置
 
-初次使用时执行`mpkg config`设置软件源，也可通过`mpkg set --add sources "url"`进行设置。
+初次使用时执行`mpkg config`设置软件源，也可通过`mpkg set --add sources "url"`或`mpkg doctor --add-repo repo_name`进行设置。
 
 软件源以扩展名分为 .json, .py, .zip, .sources 四类。py 源类似爬虫，用于获取软件信息，而软件信息都可以表示为 json 源的形式。通过 zip 源与 sources 源可以处理多个 py 源与 json 源。非 json 源需要执行`mpkg set unsafe yes`以启用。
 
@@ -78,17 +84,15 @@ mpkg download mpkg.download --root .
 
 #### mpkg set allow_portable yes
 
-若软件为 portable 类型（如 wget，无安装包），需要安装 7zip 并执行`mpkg set allow_portable yes`，否则会出现类似`skip portable ...`的 warning。此外，wget 等软件会生成调用命令，同时需要修改环境变量（参考 set link_command 部分）。
+若软件为 portable 类型（如 wget，无安装包），需要安装 7zip 并执行`mpkg set allow_portable yes`，否则会出现类似`skip portable ...`的 warning。此外，wget 等软件会生成调用命令，同时需要修改环境变量（运行 `mpkg doctor --fix-bin-env`）。
 
-注意，mpkg 会调用`C:\Program Files\7-Zip\7z.exe`解压压缩包。若 7z 安装位置有误，可进行手动设置（如`mpkg set 7z "\"C:\Program Files (x86)\7-Zip\7z.exe\" x {filepath} -o{root} -aoa > nul"`）。
+注意，mpkg 会调用`C:\Program Files\7-Zip\7z.exe`解压压缩包。若 7z 安装位置有误，可尝试运行`mpkg doctor --fix-7z-path`，也可手动设置（如`mpkg set 7z "\"C:\Program Files (x86)\7-Zip\7z.exe\" x {filepath} -o{root} -aoa > nul"`）。
 
 #### mpkg set shimexe "path"
 
-为方便在命令行中调用程序，mpkg 需要手动将 `%USERPROFILE%\.config\mpkg\bin` 目录加入至环境变量 PATH 中（也可通过 `mpkg set bin_dir dir` 修改目录位置）。mpkg 默认会根据软件信息通过创建 bat 的方式调用命令（如调用 curl, wget, adb 等），若设置 shimexe，则会生成 exe 来进行调用而非通过 bat。
+为方便在命令行中调用程序，mpkg 需要手动将 `%USERPROFILE%\.config\mpkg\bin` 目录加入至环境变量 PATH 中（也可通过 `mpkg set bin_dir dir` 修改目录位置）。mpkg 默认会根据软件信息通过创建 bat 的方式调用命令（如调用 curl, wget, adb 等），若设置 shimexe，则会生成 exe 来进行调用而非通过 bat。建议设置该项（运行 `mpkg install shimexe_kiennq`）。
 
-```cmd
-mpkg set shimexe "D:\shimexe.exe"
-```
+注意，该选项仅用于 Windows，Linux 系统使用 `ln -s` 实现此效果。
 
 #### mpkg set allow_cmd yes
 

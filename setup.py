@@ -21,7 +21,7 @@ setup(
     long_description=readme,
     long_description_content_type='text/markdown',
     url="https://github.com/mpkg-project/mpkg",
-    packages=["mpkg"],
+    packages=["mpkg", "mpkg.commands"],
     python_requires=">=3.7",
     install_requires=[
         "lxml>=4.5.0",

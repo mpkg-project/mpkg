@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import string
+import subprocess
 import sys
 import tempfile
 from functools import lru_cache
@@ -274,12 +275,23 @@ def Name(softs):
             f'name conflict\n{[n for n in names if names.count(n)!=1]}')
 
 
+def test_cmd(cmd):
+    return subprocess.call(cmd, stdout=subprocess.DEVNULL, shell=True)
+
+
+def Get7zPath():
+    for path in [r"C:\Program Files\7-Zip\7z.exe", r"C:\Program Files (x86)\7-Zip\7z.exe"]:
+        if Path(path).exists():
+            return path
+    return '7z' if test_cmd('7z') == 0 else '7z_not_found'
+
+
 def PreInstall():
     SetConfig('download_dir', str(HOME / 'Downloads'), replace=False)
     SetConfig('bin_dir', str(HOME / 'bin'), replace=False)
     SetConfig('files_dir', str(HOME / 'files'), replace=False)
-    SetConfig(
-        '7z', r'"C:\Program Files\7-Zip\7z.exe" x {filepath} -o{root} -aoa > nul', replace=False)
+    SetConfig('7z', f'"{Get7zPath()}"' +
+              r' x {filepath} -o{root} -aoa > '+os.devnull, replace=False)
     for folder in ['py', 'json', 'zip', 'bin', 'files']:
         directory = HOME / folder
         if not directory.exists():

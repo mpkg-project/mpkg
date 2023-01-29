@@ -17,6 +17,7 @@ from .utils import Download, Extract, Selected, logger
 
 _ = gettext.gettext
 ARCH = platform.architecture()[0]
+MACHINE = platform.machine().lower()
 SYS = platform.system()
 BIN_DIR = Path(GetConfig('bin_dir', default='.'))
 
