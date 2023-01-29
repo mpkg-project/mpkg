@@ -276,7 +276,7 @@ def Name(softs):
 
 
 def test_cmd(cmd):
-    return subprocess.call(cmd, stdout=subprocess.DEVNULL, shell=True)
+    return subprocess.call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
 
 
 def Get7zPath():

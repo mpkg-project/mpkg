@@ -63,7 +63,7 @@ def add_to_bash_startup(inp, profile_path):
         if script in content:
             logger.warning(f'{inp} already added to {profile_path}, returned.')
             return
-    logger.debug(f'added to {profile_path}')
+    logger.warning(f'{inp} added, please restart your terminal or computer.')
     with open(filepath, 'a') as f:
         f = f.write(script)
 
@@ -82,7 +82,7 @@ def guess_repos():
     elif SYS == 'Linux':
         if MACHINE.startswith('armv') or MACHINE.startswith('aarch') or MACHINE in ['arm', 'arm64']:
             repos += ['main_linux_arm']
-            if test_cmd('apt') == 0:
+            if test_cmd('apt --version') == 0:
                 repos += ['main_linux_arm_deb']
         elif MACHINE in ['x86', 'i386', 'i686', 'x86_64', 'x64', 'amd64']:
             repos += ['main_linux']
@@ -104,9 +104,9 @@ def print_data():
     print(f'SYS, MACHINE, ARCH: {SYS}, {MACHINE}, {ARCH}')
     print(f'\nbin_dir in PATH: {bin_available}')
     if not bin_available:
-        print(' - try: mpkg doctor --fix-bin-dir')
-    print(f"7z_command: {sevenzip_cmd}")
-    if sevenzip_cmd.startswith('7z_not_found'):
+        print(' - try: touch ~/.profile ~/.bashrc && mpkg doctor --fix-bin-env')
+    print(f"\n7z_command: {sevenzip_cmd}")
+    if sevenzip_cmd.lstrip('"').startswith('7z_not_found'):
         print(
             ' - 7zip not found, try `mpkg doctor --fix-7z-path` if you have installed it')
         print(' - try `mpkg install 7zip` to install it')
