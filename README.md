@@ -43,7 +43,7 @@ mpkg download mpkg.download --root .
 
 如果已安装 python3.7（或更高版本），执行 `pip install mpkg` 即可安装。[Releases](https://github.com/mpkg-project/mpkg/releases) 页面提供了用 pyinstaller 打包好的程序，但可能有未知 bug。
 
-如果想尝试最新版本，可通过 `pip install --upgrade https://github.com/mpkg-project/mpkg/archive/master.zip` 安装 git 仓库中的版本（可能需要先运行 `pip uninstall mpkg` 卸载旧版本），且对应的已打包程序可在 [此处](https://ci.appveyor.com/project/zpcc/mpkg/) 找到。
+如果想尝试最新版本，可通过 `pip install --upgrade https://github.com/mpkg-project/mpkg/archive/master.zip` 安装 git 仓库中的版本（可能需要先运行 `pip uninstall mpkg` 卸载旧版本），且对应的已打包程序可在 [此处](https://github.com/mpkg-project/mpkg/releases/tag/AutoBuild) 找到。
 
 ## 配置
 
