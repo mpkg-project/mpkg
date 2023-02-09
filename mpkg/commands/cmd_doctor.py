@@ -104,7 +104,7 @@ def print_data():
     print(f'SYS, MACHINE, ARCH: {SYS}, {MACHINE}, {ARCH}')
     print(f'\nbin_dir in PATH: {bin_available}')
     if not bin_available:
-        print(' - try: touch ~/.profile ~/.bashrc && mpkg doctor --fix-bin-env')
+        print(' - try: mpkg doctor --fix-bin-env')
     print(f"\n7z_command: {sevenzip_cmd}")
     if sevenzip_cmd.lstrip('"').startswith('7z_not_found'):
         print(
@@ -125,7 +125,8 @@ def print_data():
 @click.option('--fix-bin-env', is_flag=True)
 @click.option('--fix-7z-path', is_flag=True)
 def doctor(repo, fix_bin_env, fix_7z_path, new_winpath, new_test_winpath):
-    PreInstall()
+    if not GetConfig('sources'):
+        PreInstall()
     if repo:
         add_repo(repo)
     elif fix_bin_env:
@@ -133,6 +134,9 @@ def doctor(repo, fix_bin_env, fix_7z_path, new_winpath, new_test_winpath):
         if SYS == 'Windows':
             add_to_hkcu_path(bin_dir)
         elif SYS == 'Linux':
+            for filepath in [Path.home()/fn for fn in ['.profile', '.bashrc']]:
+                if not filepath.exists():
+                    filepath.touch()
             for filepath in [Path.home()/fn for fn in ['.profile', '.bash_profile', '.bash_login', '.bashrc']]:
                 if filepath.exists():
                     add_to_bash_startup(bin_dir, filepath)

@@ -1,13 +1,10 @@
 import os
-import re
 
 from setuptools import setup
 
-here = os.path.abspath(os.path.dirname(__file__))
+from mpkg import __version__
 
-with open(os.path.join(here, 'mpkg', '__init__.py'), 'rb') as f:
-    __version__ = re.search(
-        "__version__.*'([\\d.]+)'", f.read().decode('utf-8')).groups()[0]
+here = os.path.abspath(os.path.dirname(__file__))
 
 with open(os.path.join(here, 'README.md'), 'rb') as f:
     readme = f.read().decode('utf-8')
@@ -46,6 +43,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         'License :: OSI Approved :: Apache Software License',
     ],
 )

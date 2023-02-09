@@ -68,7 +68,7 @@ class SWinLnk:
 
         self.END_OF_STRING = '00'
 
-        self.cp = locale.getdefaultlocale()[1]
+        self.cp = locale.getlocale()[1]
 
     def bytes2hex(self, b):
         return b.hex()
