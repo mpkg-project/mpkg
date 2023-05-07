@@ -12,7 +12,7 @@ from ..utils import Get7zPath, PreInstall, logger, test_cmd
 REPOS = ['main', 'extras', 'scoop', 'winget',
          'main_linux', 'main_linux_deb', 'main_linux_arm', 'main_linux_arm_deb']
 
-if ARCH == 'Windows':
+if SYS == 'Windows':
     import winreg
 
     def get_reg(name='PATH', sub_key='Environment', key=winreg.HKEY_CURRENT_USER):
@@ -132,7 +132,7 @@ def doctor(repo, fix_bin_env, fix_7z_path, new_winpath, new_test_winpath):
     elif fix_bin_env:
         bin_dir = GetConfig('bin_dir')
         if SYS == 'Windows':
-            add_to_hkcu_path(bin_dir)
+            add_to_hkcu_path(bin_dir, test=False)
         elif SYS == 'Linux':
             for filepath in [Path.home()/fn for fn in ['.profile', '.bashrc']]:
                 if not filepath.exists():
