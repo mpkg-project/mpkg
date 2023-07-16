@@ -67,7 +67,7 @@ def Save(source: str, ver=-1, sync=True, check_ver=True, temporary=False):
         filepath = home / filetype / filename
         if sync:
             if not check_ver:
-                Download(url, directory=abspath, filename=filename)
+                filepath = Download(url, directory=abspath, filename=filename)
                 return filepath, latest
             if verattr == -1:
                 res = GetPage(
@@ -79,7 +79,7 @@ def Save(source: str, ver=-1, sync=True, check_ver=True, temporary=False):
                              '.ver.json', abspath=abspath)
             ver_ = -1 if not ver_ else int(ver_)
             if ver == -1 or ver > ver_:
-                Download(url, directory=abspath, filename=filename)
+                filepath = Download(url, directory=abspath, filename=filename)
                 SetConfig(filename, ver, filename=filename +
                           '.ver.json', abspath=abspath)
             else:
