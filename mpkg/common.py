@@ -4,6 +4,7 @@
 import gettext
 import json
 import os
+import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List
 
@@ -12,14 +13,21 @@ from .config import GetConfig, SetConfig
 _ = gettext.gettext
 
 
-def env_rpl(text, key, func):
-    groups = text.split(f'%{key}:')
-    if len(groups) == 0:
+def rpl_with_func(text, key, func):
+    matched = re.findall(f'%{key}:(.+)%', text)
+    if matched:
+        for arg in matched:
+            text = text.replace(f'%{key}:{arg}%', func(arg))
         return text
-    else:
-        for name in [t.split('%')[0] for t in groups[1:]]:
-            text = text.replace(f'%{key}:{name}%', func(name))
-        return text
+    return text
+
+
+def env_rpl(text):
+    text = rpl_with_func(text, 'MPKG', GetConfig)
+    text = rpl_with_func(text, 'ENV', os.getenv)
+    text = rpl_with_func(text, 'MPKG-INSTALLED',
+                         lambda x: GetConfig(x, filename='root_installed.json'))
+    return text
 
 
 @dataclass
@@ -35,11 +43,9 @@ class arch_data:
         for i, v in enumerate(self.links):
             self.links[i] = v.format(ver=self.ver)
         for i, v in enumerate(self.pre_install):
-            v = env_rpl(v, 'MPKG', GetConfig)
-            self.pre_install[i] = env_rpl(v, 'ENV', os.getenv)
+            v = env_rpl(v)
         for i, v in enumerate(self.post_install):
-            v = env_rpl(v, 'MPKG', GetConfig)
-            self.post_install[i] = env_rpl(v, 'ENV', os.getenv)
+            v = env_rpl(v)
 
     def asdict(self, simplify=False):
         if simplify:
@@ -114,8 +120,7 @@ class soft_data:
         for i, v in enumerate(self.links):
             self.links[i] = v.format(ver=self.ver)
         for k, v in self.cmd.items():
-            v = env_rpl(v, 'MPKG', GetConfig)
-            self.cmd[k] = env_rpl(v, 'MPKG', GetConfig)
+            self.cmd[k] = env_rpl(v)
         self.info.format()
         for k, v in self.arch_.items():
             v.format()
