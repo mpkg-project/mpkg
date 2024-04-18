@@ -17,7 +17,8 @@ def rpl_with_func(text, key, func):
     matched = re.findall(f'%{key}:(.+)%', text)
     if matched:
         for arg in matched:
-            text = text.replace(f'%{key}:{arg}%', func(arg))
+            new = func(arg) if func(arg) else ''
+            text = text.replace(f'%{key}:{arg}%', new)
         return text
     return text
 
@@ -121,6 +122,7 @@ class soft_data:
             self.links[i] = v.format(ver=self.ver)
         for k, v in self.cmd.items():
             self.cmd[k] = env_rpl(v)
+        self.notes = env_rpl(self.notes)
         self.info.format()
         for k, v in self.arch_.items():
             v.format()

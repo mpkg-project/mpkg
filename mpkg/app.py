@@ -257,9 +257,9 @@ class App(object):
             if GetConfig('allow_portable') == 'yes':
                 root = InstallPortable(
                     file, data.asdict(), delete_installed)
+                self.dry_run()
                 if data.cmd.get('end'):
                     Execute(data.cmd['end'].format(root=root, file=str(file)))
-                self.dry_run()
                 install_succeeded = True
             else:
                 logger.warning(f'skip portable {filename}')

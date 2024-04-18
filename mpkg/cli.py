@@ -161,18 +161,21 @@ def filename_params(func):
     @click.option('--notes', is_flag=True)
     @click.option('--args', is_flag=True)
     @click.option('--root', is_flag=True)
+    @click.option('--root-installed', is_flag=True)
     @click.option('--xroot', is_flag=True)
     @click.option('--name', is_flag=True)
     @click.option('--pflag', is_flag=True)
     @click.option('--pinfo', is_flag=True)
     @functools.wraps(func)
-    def wrapper(filename, notes, args, root, xroot, name, pflag, pinfo, *args_, **kwargs):
+    def wrapper(filename, notes, args, root, root_installed, xroot, name, pflag, pinfo, *args_, **kwargs):
         if notes:
             filename = 'notes.json'
         elif args:
             filename = 'args.json'
         elif root:
             filename = 'root.json'
+        elif root_installed:
+            filename = 'root_installed.json'
         elif xroot:
             filename = 'xroot.json'
         elif name:
