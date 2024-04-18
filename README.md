@@ -53,8 +53,6 @@ mpkg download mpkg.download --root .
 
 `mpkg sync`会同步所有软件源并显示有无更新。`mpkg show -A`显示软件源中所有软件的 name 值。`mpkg show example`显示软件详细信息，`mpkg install example`会下载软件并保存版本号等信息，然后直接运行 exe 文件。`mpkg download example`仅下载软件，且不保留安装信息。
 
-注意，安装过程中出现 warning 仍视为安装成功。
-
 ### 软件信息示例
 
 ```python

@@ -172,7 +172,7 @@ class App(object):
             self.data.format()
 
     def dry_run(self):
-        logger.debug(f'installed: {self.data.name}|{self.data.ver}')
+        logger.info(f'installed: {self.data.name}|{self.data.ver}')
         SetConfig(self.data.name, [self.data.ver,
                                    self.data.date], filename='installed.json')
 
@@ -252,6 +252,7 @@ class App(object):
         code = -1
         if data.cmd.get('start'):
             Execute(data.cmd['start'].format(file=str(file)))
+        install_succeeded = False
         if data.bin:
             if GetConfig('allow_portable') == 'yes':
                 root = InstallPortable(
@@ -259,6 +260,7 @@ class App(object):
                 if data.cmd.get('end'):
                     Execute(data.cmd['end'].format(root=root, file=str(file)))
                 self.dry_run()
+                install_succeeded = True
             else:
                 logger.warning(f'skip portable {filename}')
         else:
@@ -269,19 +271,23 @@ class App(object):
             logger.debug(f'returned {code}')
             if data.cmd.get('end'):
                 Execute(data.cmd['end'].format(file=str(file)))
-            self.dry_run()
-            passed = False
+            verify_succeeded = False
             if data.valid:
-                if len(data.valid) > 2:
-                    valid = data.valid
-                else:
-                    valid = range(data.valid[0], data.valid[1] + 1)
+                valid = data.valid if len(data.valid) > 2 else range(
+                    data.valid[0], data.valid[1] + 1)
                 if not code in valid:
                     logger.warning(f'wrong returncode {code}')
                 else:
-                    passed = True
-            if verify and not passed:
+                    verify_succeeded = True
+                    install_succeeded = True
+            else:
+                install_succeeded = True if code == 0 else False
+            if verify and not verify_succeeded:
                 print(_('verification failed'))
+            if install_succeeded:
+                self.dry_run()
+            else:
+                logger.info(_('failed to install {0}'.format(data.name)))
         if GetConfig('delete_after_install') == 'yes':
             delete_downloaded = True
         for rule in GetConfig('saveto', default=[]):
@@ -289,8 +295,8 @@ class App(object):
             if str(file).endswith(ext):
                 if dir_ == 'TEMPDIR-D':
                     delete_downloaded = True
-        if delete_downloaded and file and code == 0:
-            logger.debug(f'delete {file}')
+        if delete_downloaded and file and install_succeeded:
+            logger.info(f'delete {file}')
             file.unlink()
 
     def extract(self, with_ver=False, root=None, delete=False):
