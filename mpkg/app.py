@@ -201,7 +201,9 @@ class App(object):
                 i = data.links.index(data.arch[ARCH])
                 data.sha256 = {ARCH: data.sha256[i]}
             sha256 = data.sha256.get(ARCH) if data.sha256 else ''
-            filename = data.name+'_'+data.arch[ARCH].split('/')[-1]
+            url_split = data.arch[ARCH].split('/')
+            name = url_split[-2] if '.' in url_split[-2] and '.' not in url_split[-1] else url_split[-1]
+            filename = data.name+'_'+name
             file = Download(data.arch[ARCH], directory=root,
                             sha256=sha256, filename=filename)
         self.file = file
