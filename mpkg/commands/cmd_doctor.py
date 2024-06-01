@@ -69,11 +69,18 @@ def add_to_bash_startup(inp, profile_path):
         f = f.write(script)
 
 
-def add_repo(repo_name):
-    repos = GetConfig('sources', default=[])
-    repos += [
-        f'https://github.com/mpkg-bot/mpkg-history/raw/master/{repo_name}.json']
-    SetConfig('sources', repos)
+def add_repo(repo_name, test=False):
+    sources = GetConfig('sources', default=[])
+    repo_url = f'https://github.com/mpkg-bot/mpkg-history/raw/master/{repo_name}.json'  # noqa: E501
+    if repo_url not in sources:
+        if test:
+            return 'passed'
+        sources += [repo_url]
+    else:
+        if test:
+            return 'failed'
+        logger.info(f'repo `{repo_name}` already in sources. ')
+    SetConfig('sources', sources)
 
 
 def guess_repos():
@@ -92,10 +99,16 @@ def guess_repos():
     return repos
 
 
-def print_repos():
+def print_repos(print_all=False):
     repos = guess_repos()
-    print(f'available repos: {repos}')
-    print(' - usage: mpkg doctor --add-repo repo_name')
+    if print_all:
+        print(f'available repos: {repos}')
+        return
+    repos = [r for r in repos if add_repo(r, test=True) == 'passed']
+    if repos:
+        print()
+        print(f'available repos: {repos}')
+        print(' - usage: mpkg doctor -A name1 -A name2')
 
 
 def print_data():
@@ -119,7 +132,6 @@ def print_data():
         print(f"\nshimexe: {GetConfig('shimexe')}")
         if not GetConfig('shimexe'):
             print(' - try: mpkg install shimexe_kiennq')
-    print()
     print_repos()
 
 
@@ -127,15 +139,18 @@ def print_data():
 @click.option('new_winpath', '--add-to-hkcu-path')
 @click.option('force_winpath', '--add-to-hkcu-path-force')
 @click.option('new_test_winpath', '--add-to-hkcu-path-test')
-@click.option('repo', '--add-repo')
+@click.option('repos', '-A', '--add-repo', multiple=True)
+@click.option('print_all_repos', '--print-repos', is_flag=True)
 @click.option('--fix-bin-env', is_flag=True)
 @click.option('--fix-7z-path', is_flag=True)
 @click.option('--reset-download-dir', is_flag=True)
-def doctor(repo, fix_bin_env, fix_7z_path, reset_download_dir, new_winpath, force_winpath, new_test_winpath):
+def doctor(repos, print_all_repos, fix_bin_env, fix_7z_path, reset_download_dir,
+           new_winpath, force_winpath, new_test_winpath):
     if not GetConfig('sources'):
         PreInstall()
-    if repo:
-        add_repo(repo)
+    if repos:
+        for repo in repos:
+            add_repo(repo)
     elif fix_bin_env:
         bin_dir = GetConfig('bin_dir')
         if SYS == 'Windows':
@@ -165,5 +180,7 @@ def doctor(repo, fix_bin_env, fix_7z_path, reset_download_dir, new_winpath, forc
         add_to_hkcu_path(force_winpath, test=False, force=True)
     elif new_winpath:
         add_to_hkcu_path(new_winpath, test=False)
+    elif print_all_repos:
+        print_repos(print_all=True)
     else:
         print_data()
