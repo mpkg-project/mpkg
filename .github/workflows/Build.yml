@@ -48,7 +48,7 @@ jobs:
           tag_name: AutoBuild
           files: |
             ${{ matrix.FILENAME }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.FILENAME }}
           path: ${{ matrix.FILENAME }}
