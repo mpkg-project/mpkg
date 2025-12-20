@@ -272,7 +272,7 @@ def apps_params(func):
     @click.option('--ver')
     @click.option('--ignore-hash', is_flag=True)
     @click.option('--x86', '--32bit', is_flag=True)
-    @click.option('--x64', '--32bit', is_flag=True)
+    @click.option('--x64', '--64bit', is_flag=True)
     @functools.wraps(func)
     def wrapper(packages, outdated, url, ver, ignore_hash, x86, x64, *args_, **kwargs):
         apps = name_handler(packages, outdated)
